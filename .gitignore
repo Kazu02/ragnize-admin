@@ -1,0 +1,25 @@
+# Screenshots generated during development
+*.png
+*.jpg
+*.jpeg
+
+# Playwright output
+.playwright-mcp/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Temp files
+*.tmp
+artifact-api.json
+next-data.json
+source.html

@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAGNIZE 管理プラットフォーム</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { margin: 0; font-family: 'Segoe UI', sans-serif; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #f1f5f9; }
+  ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
+
+const MENU_ITEMS = [
+  { id: 'dashboard', icon: '⊞', label: 'ダッシュボード' },
+  { id: 'sales', icon: '¥', label: '売上管理' },
+  { id: 'billing', icon: '≡', label: '請求管理' },
+  { id: 'agency', icon: '◈', label: '代理店管理' },
+  { id: 'subagency', icon: '◇', label: '孫代理店管理' },
+  { id: 'tenant', icon: '◉', label: 'テナント管理' },
+  { id: 'contract', icon: '▤', label: '契約管理' },
+  { id: 'product', icon: '▪', label: '製品管理' },
+  { id: 'pricing', icon: '⊕', label: '課金単価設定' },
+  { id: 'calllog', icon: '○', label: '通話利用管理' },
+  { id: 'token', icon: '◆', label: 'トークン管理' },
+  { id: 'report', icon: '▦', label: 'レポート' },
+  { id: 'econtract', icon: '✦', label: '電子契約管理' },
+  { id: 'notice', icon: '◎', label: 'お知らせ管理' },
+  { id: 'permission', icon: '⊛', label: '権限管理' },
+  { id: 'settings', icon: '⚙', label: 'システム設定' },
+];
+
+const INITIAL_DATA = {
+  agencies: [
+    { id:'AG001', name:'㈱テクノソリューション', code:'TS-001', subCount:3, tenantCount:12, mrr:1850000, commission:370000, status:'有効', startDate:'2024-04-01' },
+    { id:'AG002', name:'デジタルパートナーズ㈱', code:'DP-002', subCount:2, tenantCount:8, mrr:1240000, commission:240000, status:'有効', startDate:'2024-06-01' },
+    { id:'AG003', name:'㈱スマートビジネス', code:'SB-003', subCount:5, tenantCount:15, mrr:2100000, commission:420000, status:'有効', startDate:'2024-03-01' },
+    { id:'AG004', name:'イノベーション合同会社', code:'IN-004', subCount:1, tenantCount:5, mrr:780000, commission:150000, status:'審査中', startDate:'2025-02-01' },
+    { id:'AG005', name:'㈱フューチャーリンク', code:'FL-005', subCount:0, tenantCount:0, mrr:0, commission:0, status:'停止', startDate:'2024-08-01' },
+    { id:'AG006', name:'㈱ウェーブソリューション', code:'WS-006', subCount:2, tenantCount:7, mrr:980000, commission:190000, status:'有効', startDate:'2024-09-01' },
+  ],
+  subagencies: [
+    { id:'SA001', name:'㈱ネクストステージ', code:'NS-001', parentAgency:'テクノソリューション', tenantCount:4, mrr:620000, commission:120000, status:'有効' },
+    { id:'SA002', name:'東海ビジネス㈱', code:'TB-002', parentAgency:'スマートビジネス', tenantCount:3, mrr:450000, commission:90000, status:'有効' },
+    { id:'SA003', name:'㈱ノーススター', code:'NS-003', parentAgency:'デジタルパートナーズ', tenantCount:2, mrr:280000, commission:50000, status:'審査中' },
+    { id:'SA004', name:'九州DX推進㈱', code:'KD-004', parentAgency:'スマートビジネス', tenantCount:5, mrr:710000, commission:140000, status:'有効' },
+    { id:'SA005', name:'㈱関東テック', code:'KT-005', parentAgency:'テクノソリューション', tenantCount:1, mrr:150000, commission:30000, status:'停止' },
+  ],
+  tenants: [
+    { id:'TN001', name:'㈱山田製作所', agency:'テクノソリューション', products:['ナツメAI','架電AI'], mrr:320000, startDate:'2024-05', status:'契約中' },
+    { id:'TN002', name:'大阪商事㈱', agency:'スマートビジネス', products:['受電AI'], mrr:85000, startDate:'2024-08', status:'契約中' },
+    { id:'TN003', name:'東京技研㈱', agency:'直販', products:['RAGNIZE面接'], mrr:45000, startDate:'2025-01', status:'契約中' },
+    { id:'TN004', name:'㈱北海道フーズ', agency:'デジタルパートナーズ', products:['マドモアゼルAI'], mrr:28000, startDate:'2025-03', status:'トライアル' },
+    { id:'TN005', name:'九州エネルギー㈱', agency:'テクノソリューション', products:['架電AI','受電AI'], mrr:180000, startDate:'2024-11', status:'契約中' },
+    { id:'TN006', name:'関西メディア㈱', agency:'スマートビジネス', products:['ナツメAI'], mrr:120000, startDate:'2024-09', status:'契約中' },
+    { id:'TN007', name:'中部システム㈱', agency:'テクノソリューション', products:['架電AI'], mrr:65000, startDate:'2024-06', status:'停止中' },
+  ],
+  contracts: [
+    { id:'CT-2503-001', tenant:'㈱山田製作所', agency:'テクノソリューション', product:'ナツメAI', startDate:'2024-05-01', endDate:'2025-04-30', monthlyFee:250000, status:'契約中', econtract:'締結済' },
+    { id:'CT-2503-002', tenant:'大阪商事㈱', agency:'スマートビジネス', product:'受電AI', startDate:'2024-08-15', endDate:'2025-08-14', monthlyFee:85000, status:'契約中', econtract:'締結済' },
+    { id:'CT-2503-003', tenant:'東京技研㈱', agency:'直販', product:'RAGNIZE面接', startDate:'2025-01-01', endDate:'2025-12-31', monthlyFee:45000, status:'契約中', econtract:'署名中' },
+    { id:'CT-2503-004', tenant:'㈱北海道フーズ', agency:'デジタルパートナーズ', product:'マドモアゼルAI', startDate:'2025-03-01', endDate:'2025-05-31', monthlyFee:28000, status:'トライアル', econtract:'送信済' },
+    { id:'CT-2503-005', tenant:'九州エネルギー㈱', agency:'テクノソリューション', product:'架電AI', startDate:'2024-11-01', endDate:'2025-10-31', monthlyFee:120000, status:'契約中', econtract:'締結済' },
+    { id:'CT-2503-006', tenant:'関西メディア㈱', agency:'スマートビジネス', product:'ナツメAI', startDate:'2024-09-01', endDate:'2025-08-31', monthlyFee:120000, status:'契約中', econtract:'締結済' },
+    { id:'CT-2503-007', tenant:'中部システム㈱', agency:'テクノソリューション', product:'架電AI', startDate:'2024-06-01', endDate:'2025-05-31', monthlyFee:65000, status:'停止中', econtract:'締結済' },
+  ],
+  invoices: [
+    { id:'INV-202503-001', tenant:'㈱山田製作所', month:'2025-03', basicFee:250000, usageFee:70000, total:320000, dueDate:'2025-04-30', status:'発行済' },
+    { id:'INV-202503-002', tenant:'大阪商事㈱', month:'2025-03', basicFee:85000, usageFee:0, total:85000, dueDate:'2025-04-30', status:'入金済' },
+    { id:'INV-202503-003', tenant:'東京技研㈱', month:'2025-03', basicFee:45000, usageFee:0, total:45000, dueDate:'2025-04-30', status:'発行済' },
+    { id:'INV-202503-004', tenant:'九州エネルギー㈱', month:'2025-03', basicFee:120000, usageFee:60000, total:180000, dueDate:'2025-03-31', status:'未入金' },
+    { id:'INV-202503-005', tenant:'関西メディア㈱', month:'2025-03', basicFee:120000, usageFee:0, total:120000, dueDate:'2025-04-30', status:'発行済' },
+    { id:'INV-202503-006', tenant:'中部システム㈱', month:'2025-03', basicFee:65000, usageFee:0, total:65000, dueDate:'2025-03-31', status:'未入金' },
+  ],
+  products: [
+    { id:'P001', name:'ナツメAI', category:'音声AI', billingType:'月額+従量', basicFee:50000, initialFee:100000, agencyRate:20, subagencyRate:10, usage:18, status:'有効' },
+    { id:'P002', name:'架電AI', category:'音声AI', billingType:'月額+従量', basicFee:40000, initialFee:80000, agencyRate:20, subagencyRate:10, usage:14, status:'有効' },
+    { id:'P003', name:'受電AI', category:'音声AI', billingType:'月額+従量', basicFee:35000, initialFee:70000, agencyRate:15, subagencyRate:8, usage:9, status:'有効' },
+    { id:'P004', name:'RAGNIZE for 面接', category:'SaaS', billingType:'月額固定', basicFee:45000, initialFee:50000, agencyRate:15, subagencyRate:8, usage:6, status:'有効' },
+    { id:'P005', name:'マドモアゼルAI', category:'トークン型', billingType:'月額+トークン', basicFee:0, initialFee:0, agencyRate:10, subagencyRate:5, usage:5, status:'有効' },
+    { id:'P006', name:'jobゲート', category:'SaaS', billingType:'月額固定', basicFee:30000, initialFee:30000, agencyRate:15, subagencyRate:8, usage:0, status:'準備中' },
+    { id:'P007', name:'恋テレ', category:'トークン型', billingType:'月額+トークン', basicFee:0, initialFee:0, agencyRate:10, subagencyRate:5, usage:0, status:'準備中' },
+  ],
+  callLogs: [
+    { id:'CL001', tenant:'㈱山田製作所', type:'架電', date:'2025-03-15', duration:'5分20秒', seconds:320, unitPrice:2, amount:640, status:'完了' },
+    { id:'CL002', tenant:'九州エネルギー㈱', type:'受電', date:'2025-03-15', duration:'3分10秒', seconds:190, unitPrice:2, amount:380, status:'完了' },
+    { id:'CL003', tenant:'㈱山田製作所', type:'架電', date:'2025-03-14', duration:'8分45秒', seconds:525, unitPrice:2, amount:1050, status:'完了' },
+    { id:'CL004', tenant:'中部システム㈱', type:'架電', date:'2025-03-14', duration:'1分30秒', seconds:90, unitPrice:2, amount:180, status:'失敗' },
+    { id:'CL005', tenant:'大阪商事㈱', type:'受電', date:'2025-03-13', duration:'12分00秒', seconds:720, unitPrice:2, amount:1440, status:'完了' },
+  ],
+  tokenLogs: [
+    { id:'TK001', tenant:'マドモアゼルAI/北海道フーズ', event:'付与', tokens:100000, unitPrice:0.01, amount:1000, balance:98450, date:'2025-03-01' },
+    { id:'TK002', tenant:'マドモアゼルAI/北海道フーズ', event:'消費', tokens:-1200, unitPrice:0.01, amount:12, balance:97250, date:'2025-03-05' },
+    { id:'TK003', tenant:'恋テレ/㈱サンプル', event:'追加購入', tokens:50000, unitPrice:0.01, amount:500, balance:50000, date:'2025-03-10' },
+    { id:'TK004', tenant:'マドモアゼルAI/北海道フーズ', event:'消費', tokens:-550, unitPrice:0.01, amount:5.5, balance:96700, date:'2025-03-12' },
+  ],
+  econtracts: [
+    { id:'ES-001', contractId:'CT-2503-001', tenant:'㈱山田製作所', type:'新規契約', sentDate:'2024-04-20', signedDate:'2024-04-25', status:'締結済' },
+    { id:'ES-002', contractId:'CT-2503-002', tenant:'大阪商事㈱', type:'新規契約', sentDate:'2024-08-01', signedDate:'2024-08-10', status:'締結済' },
+    { id:'ES-003', contractId:'CT-2503-003', tenant:'東京技研㈱', type:'新規契約', sentDate:'2025-03-10', signedDate:'-', status:'署名中' },
+    { id:'ES-004', contractId:'CT-2503-004', tenant:'㈱北海道フーズ', type:'トライアル', sentDate:'2025-03-14', signedDate:'-', status:'送信済' },
+    { id:'ES-005', contractId:'CT-2503-005', tenant:'九州エネルギー㈱', type:'新規契約', sentDate:'2024-10-20', signedDate:'2024-10-28', status:'締結済' },
+    { id:'ES-006', contractId:'-', tenant:'㈱山田製作所', type:'更新契約', sentDate:'-', signedDate:'-', status:'下書き' },
+  ],
+  notices: [
+    { id:'NT001', title:'2025年4月 請求書発行スケジュールのお知らせ', target:'全ユーザー', publishDate:'2025-03-20', endDate:'2025-04-30', status:'予約済', body:'' },
+    { id:'NT002', title:'システムメンテナンスのご案内（3/30 2:00〜4:00）', target:'全ユーザー', publishDate:'2025-03-18', endDate:'2025-03-30', status:'公開中', body:'' },
+    { id:'NT003', title:'新機能リリース：電子契約リマインド機能の追加', target:'代理店以上', publishDate:'2025-03-15', endDate:'2025-04-15', status:'公開中', body:'' },
+    { id:'NT004', title:'架電AI 価格改定のご案内（2025年5月〜）', target:'全ユーザー', publishDate:'2025-04-01', endDate:'2025-05-31', status:'下書き', body:'' },
+    { id:'NT005', title:'代理店向け Q1 実績レポート配信', target:'代理店のみ', publishDate:'2025-03-10', endDate:'2025-04-10', status:'公開中', body:'' },
+  ],
+};
+
+// ==================== Utility ====================
+const downloadCSV = (data, filename) => {
+  if (!data || data.length === 0) return;
+  const headers = Object.keys(data[0]).join(',');
+  const rows = data.map(row => Object.values(row).map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const csv = '﻿' + headers + '\n' + rows;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+};
+
+const fmt = (n) => Number(n).toLocaleString();
+const fmtY = (n) => '¥' + Number(n).toLocaleString();
+
+const statusBadge = (status) => {
+  const map = {
+    '有効':'bg-green-100 text-green-700','契約中':'bg-green-100 text-green-700',
+    '入金済':'bg-green-100 text-green-700','締結済':'bg-green-100 text-green-700',
+    '公開中':'bg-green-100 text-green-700','完了':'bg-green-100 text-green-700',
+    '審査中':'bg-orange-100 text-orange-700','署名中':'bg-orange-100 text-orange-700',
+    '送信済':'bg-orange-100 text-orange-700','予約済':'bg-orange-100 text-orange-700',
+    'トライアル':'bg-blue-100 text-blue-700','発行済':'bg-blue-100 text-blue-700',
+    '準備中':'bg-blue-100 text-blue-700',
+    '停止':'bg-red-100 text-red-700','停止中':'bg-red-100 text-red-700',
+    '未入金':'bg-red-100 text-red-700','失敗':'bg-red-100 text-red-700',
+    '下書き':'bg-slate-100 text-slate-600',
+  };
+  const cls = map[status] || 'bg-slate-100 text-slate-600';
+  return <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>{status}</span>;
+};
+
+// ==================== Toast ====================
+const Toast = ({ toasts, removeToast }) => (
+  <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+    {toasts.map(t => (
+      <div key={t.id} className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white text-sm
+        ${t.type==='success'?'bg-green-600':t.type==='error'?'bg-red-600':t.type==='warning'?'bg-orange-500':'bg-blue-600'}`}>
+        <span>{t.type==='success'?'✓':t.type==='error'?'✗':t.type==='warning'?'⚠':'ℹ'}</span>
+        <span>{t.message}</span>
+        <button onClick={()=>removeToast(t.id)} className="ml-2 opacity-70 hover:opacity-100">×</button>
+      </div>
+    ))}
+  </div>
+);
+
+// ==================== Modal Base ====================
+const Modal = ({ title, onClose, children, size='lg' }) => {
+  const sizes = { sm:'max-w-sm', md:'max-w-md', lg:'max-w-lg', xl:'max-w-2xl', '2xl':'max-w-4xl' };
+  return (
+    <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4" onClick={(e)=>{if(e.target===e.currentTarget)onClose();}}>
+      <div className={`bg-white rounded-xl shadow-2xl w-full ${sizes[size]||sizes.lg} max-h-[90vh] overflow-y-auto`}>
+        <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
+          <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">×</button>
+        </div>
+        <div className="p-6">{children}</div>
+      </div>
+    </div>
+  );
+};
+
+const FormField = ({ label, required, children }) => (
+  <div className="mb-4">
+    <label className="block text-sm font-medium text-slate-700 mb-1">{label}{required&&<span className="text-red-500 ml-1">*</span>}</label>
+    {children}
+  </div>
+);
+
+const Input = (props) => <input {...props} className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${props.className||''}`}/>;
+const Select = ({ children, ...props }) => <select {...props} className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${props.className||''}`}>{children}</select>;
+const Textarea = (props) => <textarea {...props} className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${props.className||''}`}/>;
+
+const BtnPrimary = ({ children, ...props }) => <button {...props} className={`bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium ${props.className||''}`}>{children}</button>;
+const BtnSecondary = ({ children, ...props }) => <button {...props} className={`bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium ${props.className||''}`}>{children}</button>;
+const BtnDanger = ({ children, ...props }) => <button {...props} className={`bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium ${props.className||''}`}>{children}</button>;
+
+// ==================== Modal Renderer ====================
+const ModalRenderer = ({ modal, setModal, data, setData, showToast }) => {
+  const close = () => setModal(null);
+
+  if (modal.type === 'confirm') {
+    const { title, message, onConfirm } = modal.data;
+    return (
+      <Modal title={title||'確認'} onClose={close} size="sm">
+        <p className="text-slate-600 mb-6">{message}</p>
+        <div className="flex justify-end gap-3">
+          <BtnSecondary onClick={close}>キャンセル</BtnSecondary>
+          <BtnPrimary onClick={()=>{ onConfirm(); close(); }}>実行する</BtnPrimary>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === 'agencyNew' || modal.type === 'agencyEdit') {
+    const isEdit = modal.type === 'agencyEdit';
+    const orig = isEdit ? modal.data : {};
+    const [form, setForm] = React.useState({ name:'', code:'', status:'有効', startDate:'', ...orig });
+    const save = () => {
+      if (!form.name || !form.code) { showToast('必須項目を入力してください','error'); return; }
+      if (isEdit) {
+        setData(prev=>({...prev, agencies: prev.agencies.map(a=>a.id===form.id?{...form}:a)}));
+      } else {
+        const newItem = {...form, id:'AG'+Date.now(), subCount:0, tenantCount:0, mrr:0, commission:0};
+        setData(prev=>({...prev, agencies:[...prev.agencies, newItem]}));
+      }
+      showToast(isEdit?'代理店情報を保存しました':'代理店を登録しました');
+      close();
+    };
+    const del = () => {
+      setData(prev=>({...prev, agencies:prev.agencies.filter(a=>a.id!==form.id)}));
+      showToast('代理店を削除しました','warning'); close();
+    };
+    return (
+      <Modal title={isEdit?'代理店編集':'代理店新規登録'} onClose={close}>
+        <FormField label="代理店名" required><Input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="㈱サンプル"/></FormField>
+        <FormField label="代理店コード" required><Input value={form.code} onChange={e=>setForm({...form,code:e.target.value})} placeholder="XX-001"/></FormField>
+        <FormField label="ステータス"><Select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option>有効</option><option>審査中</option><option>停止</option></Select></FormField>
+        <FormField label="契約開始日"><Input type="date" value={form.startDate} onChange={e=>setForm({...form,startDate:e.target.value})}/></FormField>
+        <div className="flex justify-between mt-6">
+          {isEdit ? <BtnDanger onClick={del}>削除</BtnDanger> : <div/>}
+          <div className="flex gap-3"><BtnSecondary onClick={close}>キャンセル</BtnSecondary><BtnPrimary onClick={save}>保存</BtnPrimary></div>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === 'subagencyNew' || modal.type === 'subagencyEdit') {
+    const isEdit = modal.type === 'subagencyEdit';
+    const orig = isEdit ? modal.data : {};
+    const [form, setForm] = React.useState({ name:'', code:'', parentAgency:'', status:'有効', ...orig });
+    const save = () => {
+      if (!form.name || !form.code) { showToast('必須項目を入力してください','error'); return; }
+      if (isEdit) {
+        setData(prev=>({...prev, subagencies: prev.subagencies.map(a=>a.id===form.id?{...form}:a)}));
+      } else {
+        setData(prev=>({...prev, subagencies:[...prev.subagencies, {...form, id:'SA'+Date.now(), tenantCount:0, mrr:0, commission:0}]}));
+      }
+      showToast(isEdit?'孫代理店情報を保存しました':'孫代理店を登録しました'); close();
+    };
+    return (
+      <Modal title={isEdit?'孫代理店編集':'孫代理店新規登録'} onClose={close}>
+        <FormField label="孫代理店名" required><Input value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></FormField>
+        <FormField label="コード" required><Input value={form.code} onChange={e=>setForm({...form,code:e.target.value})}/></FormField>
+        <FormField label="親代理店"><Select value={form.parentAgency} onChange={e=>setForm({...form,parentAgency:e.target.value})}>
+          <option value="">選択してください</option>
+          {data.agencies.map(a=><option key={a.id} value={a.name}>{a.name}</option>)}
+        </Select></FormField>
+        <FormField label="ステータス"><Select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option>有効</option><option>審査中</option><option>停止</option></Select></FormField>
+        <div className="flex justify-end gap-3 mt-6"><BtnSecondary onClick={close}>キャンセル</BtnSecondary><BtnPrimary onClick={save}>保存</BtnPrimary></div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === 'tenantNew' || modal.type === 'tenantEdit') {
+    const isEdit = modal.type === 'tenantEdit';
+    const orig = isEdit ? {...modal.data, products: modal.data.products.join(',')} : {};
+    const [form, setForm] = React.useState({ name:'', agency:'', mrr:0, startDate:'', status:'契約中', products:'', ...orig });
+    const save = () => {
+      if (!form.name) { showToast('テナント名は必須です','error'); return; }
+      const item = {...form, mrr:Number(form.mrr), products: form.products?form.products.split(',').map(s=>s.trim()):[]};
+      if (isEdit) {
+        setData(prev=>({...prev, tenants:prev.tenants.map(t=>t.id===item.id?item:t)}));
+      } else {
+        setData(prev=>({...prev, tenants:[...prev.tenants, {...item,id:'TN'+Date.now()}]}));
+      }
+      showToast(isEdit?'テナント情報を保存しました':'テナントを登録しました'); close();
+    };
+    return (
+      <Modal title={isEdit?'テナント編集':'テナント新規登録'} onClose={close}>
+        <FormField label="テナント名" required><Input value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></FormField>
+        <FormField label="代理店"><Select value={form.agency} onChange={e=>setForm({...form,agency:e.target.value})}>
+          <option value="">直販</option>
+          {data.agencies.map(a=><option key={a.id} value={a.name}>{a.name}</option>)}
+        </Select></FormField>
+        <FormField label="利用製品（カンマ区切り）"><Input value={form.products} onChange={e=>setForm({...form,products:e.target.value})} placeholder="ナツメAI, 架電AI"/></FormField>
+        <FormField label="MRR (円)"><Input type="number" value={form.mrr} onChange={e=>setForm({...form,mrr:e.target.value})}/></FormField>
+        <FormField label="契約開始月"><Input type="month" value={form.startDate} onChange={e=>setForm({...form,startDate:e.target.value})}/></FormField>
+        <FormField label="ステータス"><Select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option>契約中</option><option>トライアル</option><option>停止中</option></Select></FormField>
+        <div className="flex justify-end gap-3 mt-6"><BtnSecondary onClick={close}>キャンセル</BtnSecondary><BtnPrimary onClick={save}>保存</BtnPrimary></div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === 'contractNew' || modal.type === 'contractEdit') {
+    const isEdit = modal.type === 'contractEdit';
+    const orig = isEdit ? modal.data : {};
+    const [form, setForm] = React.useState({ tenant:'', agency:'', product:'', startDate:'', endDate:'', monthlyFee:0, status:'契約中', econtract:'下書き', ...orig });
+    const save = () => {
+      if (!form.tenant || !form.product) { showToast('必須項目を入力してください','error'); return; }
+      const item = {...form, monthlyFee:Number(form.monthlyFee)};
+      if (isEdit) {
+        setData(prev=>({...prev, contracts:prev.contracts.map(c=>c.id===item.id?item:c)}));
+      } else {
+        setData(prev=>({...prev, contracts:[...prev.contracts, {...item,id:'CT-'+Date.now()}]}));
+      }
+      showToast(isEdit?'契約情報を保存しました':'契約を作成しました'); close();
+    };
+    return (
+      <Modal title={isEdit?'契約編集':'新規契約作成'} onClose={close}>
+        <FormField label="テナント" required><Select value={form.tenant} onChange={e=>setForm({...form,tenant:e.target.value})}>
+          <option value="">選択</option>{data.tenants.map(t=><option key={t.id}>{t.name}</option>)}
+        </Select></FormField>
+        <FormField label="代理店"><Select value={form.agency} onChange={e=>setForm({...form,agency:e.target.value})}>
+          <option value="">直販</option>{data.agencies.map(a=><option key={a.id}>{a.name}</option>)}
+        </Select></FormField>
+        <FormField label="製品" required><Select value={form.product} onChange={e=>setForm({...form,product:e.target.value})}>
+          <option value="">選択</option>{data.products.map(p=><option key={p.id}>{p.name}</option>)}
+        </Select></FormField>
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="開始日"><Input type="date" value={form.startDate} onChange={e=>setForm({...form,startDate:e.target.value})}/></FormField>
+          <FormField label="終了日"><Input type="date" value={form.endDate} onChange={e=>setForm({...form,endDate:e.target.value})}/></FormField>
+        </div>
+        <FormField label="月額費用（円）"><Input type="number" value={form.monthlyFee} onChange={e=>setForm({...form,monthlyFee:e.target.value})}/></FormField>
+        <FormField label="ステータス"><Select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option>契約中</option><option>トライアル</option><option>停止中</option></Select></FormField>
+        <div className="flex justify-end gap-3 mt-6"><BtnSecondary onClick={close}>キャンセル</BtnSecondary><BtnPrimary onClick={save}>保存</BtnPrimary></div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === 'invoiceNew') {
+    const [form, setForm] = React.useState({ tenant:'', month:'2025-03', basicFee:0, usageFee:0 });
+    const save = () => {
+      if (!form.tenant) { showToast('テナントを選択してください','error'); return; }
+      const total = Number(form.basicFee) + Number(form.usageFee);
+      const inv = {...form, id:'INV-'+Date.now(), total, dueDate:'2025-04-30', status:'発行済'};
+      setData(prev=>({...prev, invoices:[...prev.invoices, inv]}));
+      showToast('請求書を発行しました'); close();
+    };
+    return (
+      <Modal title="請求書発行" onClose={close}>
+        <FormField label="テナント" required><Select value={form.tenant} onChange={e=>setForm({...form,tenant:e.target.value})}>
+          <option value="">選択</option>{data.tenants.map(t=><option key={t.id}>{t.name}</option>)}
+        </Select></FormField>
+        <FormField label="請求月"><Input type="month" value={form.month} onChange={e=>setForm({...form,month:e.target.value})}/></FormField>
+        <FormField label="基本料金（円）"><Input type="number" value={form.basicFee} onChange={e=>setForm({...form,basicFee:e.target.value})}/></FormField>
+        <FormField label="従量料金（円）"><Input type="number" value={form.usageFee} onChange={e=>setForm({...form,usageFee:e.target.value})}/></FormField>
+        <div className="bg-slate-50 rounded-lg p-3 mb-4">
+          <span className="text-sm text-slate-600">合計: </span>
+          <span className="font-bold text-slate-800">{fmtY(Number(form.basicFee)+Number(form.usageFee))}</span>
+        </div>
+        <div className="flex justify-end gap-3"><BtnSecondary onClick={close}>キャンセル</BtnSecondary><BtnPrimary onClick={save}>発行する</BtnPrimary></div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === 'productNew' || modal.type === 'productEdit') {
+    const isEdit = modal.type === 'productEdit';
+    const orig = isEdit ? modal.data : {};
+    const [form, setForm] = React.useState({ name:'', category:'音声AI', billingType:'月額+従量', basicFee:0, initialFee:0, agencyRate:20, subagencyRate:10, status:'有効', ...orig });
+    const save = () => {
+      if (!form.name) { showToast('製品名は必須です','error'); return; }
+      const item = {...form, basicFee:Number(form.basicFee), initialFee:Number(form.initialFee), agencyRate:Number(form.agencyRate), subagencyRate:Number(form.subagencyRate)};
+      if (isEdit) {
+        setData(prev=>({...prev, products:prev.products.map(p=>p.id===item.id?item:p)}));
+      } else {
+        setData(prev=>({...prev, products:[...prev.products, {...item, id:'P'+Date.now(), usage:0}]}));
+      }
+      showToast(isEdit?'製品情報を保存しました':'製品を登録しました'); close();
+    };
+    return (
+      <Modal title={isEdit?'製品編集':'製品新規登録'} onClose={close}>
+        <FormField label="製品名" required><Input value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></FormField>
+        <FormField label="カテゴリ"><Select value={form.category} onChange={e=>setForm({...form,category:e.target.value})}><option>音声AI</option><option>SaaS</option><option>トークン型</option></Select></FormField>
+        <FormField label="課金タイプ"><Select value={form.billingType} onChange={e=>setForm({...form,billingType:e.target.value})}><option>月額固定</option><option>月額+従量</option><option>月額+トークン</option></Select></FormField>
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="基本料金（円）"><Input type="number" value={form.basicFee} onChange={e=>setForm({...form,basicFee:e.target.value})}/></FormField>
+          <FormField label="初期費用（円）"><Input type="number" value={form.initialFee} onChange={e=>setForm({...form,initialFee:e.target.value})}/></FormField>
+          <FormField label="代理店手数料率(%)"><Input type="number" value={form.agencyRate} onChange={e=>setForm({...form,agencyRate:e.target.value})}/></FormField>
+          <FormField label="孫代理店手数料率(%)"><Input type="number" value={form.subagencyRate} onChange={e=>setForm({...form,subagencyRate:e.target.value})}/></FormField>
+        </div>
+        <FormField label="ステータス"><Select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option>有効</option><option>準備中</option><option>停止</option></Select></FormField>
+        <div className="flex justify-end gap-3 mt-6"><BtnSecondary onClick={close}>キャンセル</BtnSecondary><BtnPrimary onClick={save}>保存</BtnPrimary></div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === 'econtractNew') {
+    const [form, setForm] = React.useState({ tenant:'', type:'新規契約', contractId:'' });
+    const save = () => {
+      if (!form.tenant) { showToast('テナントを選択してください','error'); return; }
+      const item = {...form, id:'ES-'+Date.now(), sentDate:'2025-03-15', signedDate:'-', status:'送信済'};
+      setData(prev=>({...prev, econtracts:[...prev.econtracts, item]}));
+      showToast('電子契約を送信しました'); close();
+    };
+    return (
+      <Modal title="電子契約新規送信" onClose={close}>
+        <FormField label="テナント" required><Select value={form.tenant} onChange={e=>setForm({...form,tenant:e.target.value})}>
+          <option value="">選択</option>{data.tenants.map(t=><option key={t.id}>{t.name}</option>)}
+        </Select></FormField>
+        <FormField label="契約種別"><Select value={form.type} onChange={e=>setForm({...form,type:e.target.value})}><option>新規契約</option><option>更新契約</option><option>トライアル</option></Select></FormField>
+        <FormField label="関連契約ID"><Select value={form.contractId} onChange={e=>setForm({...form,contractId:e.target.value})}>
+          <option value="">選択（任意）</option>{data.contracts.map(c=><option key={c.id}>{c.id}</option>)}
+        </Select></FormField>
+        <div className="flex justify-end gap-3 mt-6"><BtnSecondary onClick={close}>キャンセル</BtnSecondary><BtnPrimary onClick={save}>送信する</BtnPrimary></div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === 'noticeEdit') {
+    const orig = modal.data || {};
+    const [form, setForm] = React.useState({ title:'', target:'全ユーザー', publishDate:'', endDate:'', status:'下書き', body:'', ...orig });
+    const save = (status) => {
+      if (!form.title) { showToast('タイトルは必須です','error'); return; }
+      const item = {...form, status};
+      if (form.id) {
+        setData(prev=>({...prev, notices:prev.notices.map(n=>n.id===item.id?item:n)}));
+      } else {
+        setData(prev=>({...prev, notices:[...prev.notices, {...item, id:'NT'+Date.now()}]}));
+      }
+      showToast(status==='公開中'?'お知らせを公開しました':'下書きを保存しました'); close();
+    };
+    return (
+      <Modal title={form.id?'お知らせ編集':'お知らせ作成'} onClose={close} size="xl">
+        <FormField label="タイトル" required><Input value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></FormField>
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="配信対象"><Select value={form.target} onChange={e=>setForm({...form,target:e.target.value})}><option>全ユーザー</option><option>代理店以上</option><option>代理店のみ</option><option>テナントのみ</option></Select></FormField>
+          <FormField label="ステータス"><Select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option>下書き</option><option>予約済</option><option>公開中</option></Select></FormField>
+          <FormField label="公開開始日"><Input type="date" value={form.publishDate} onChange={e=>setForm({...form,publishDate:e.target.value})}/></FormField>
+          <FormField label="公開終了日"><Input type="date" value={form.endDate} onChange={e=>setForm({...form,endDate:e.target.value})}/></FormField>
+        </div>
+        <FormField label="本文"><Textarea rows={5} value={form.body} onChange={e=>setForm({...form,body:e.target.value})} placeholder="お知らせ本文を入力..."/></FormField>
+        <div className="flex justify-end gap-3 mt-6">
+          <BtnSecondary onClick={close}>キャンセル</BtnSecondary>
+          <BtnSecondary onClick={()=>save('下書き')}>下書き保存</BtnSecondary>
+          <BtnPrimary onClick={()=>save('公開中')}>公開する</BtnPrimary>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === 'permissionEdit') {
+    const { role: roleName, permissions: initPerms } = modal.data;
+    const [perms, setPerms] = React.useState(initPerms);
+    const toggle = (key) => setPerms(p=>({...p,[key]:!p[key]}));
+    return (
+      <Modal title={`権限編集: ${roleName}`} onClose={close}>
+        <div className="space-y-3">
+          {Object.entries(perms).map(([key,val])=>(
+            <label key={key} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg cursor-pointer">
+              <span className="text-sm text-slate-700">{key}</span>
+              <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${val?'bg-blue-600':'bg-slate-300'}`} onClick={()=>toggle(key)}>
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${val?'translate-x-6':'translate-x-1'}`}/>
+              </div>
+            </label>
+          ))}
+        </div>
+        <div className="flex justify-end gap-3 mt-6">
+          <BtnSecondary onClick={close}>キャンセル</BtnSecondary>
+          <BtnPrimary onClick={()=>{ showToast('権限設定を保存しました'); close(); }}>保存</BtnPrimary>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === 'invoiceDetail') {
+    const inv = modal.data;
+    return (
+      <Modal title="請求書詳細" onClose={close}>
+        <div className="space-y-3 text-sm">
+          {[['請求書ID',inv.id],['テナント',inv.tenant],['請求月',inv.month],['基本料金',fmtY(inv.basicFee)],['従量料金',fmtY(inv.usageFee)],['合計',fmtY(inv.total)],['支払期日',inv.dueDate]].map(([k,v])=>(
+            <div key={k} className="flex justify-between py-2 border-b border-slate-100">
+              <span className="text-slate-500">{k}</span><span className="font-medium">{v}</span>
+            </div>
+          ))}
+          <div className="flex justify-between py-2"><span className="text-slate-500">ステータス</span>{statusBadge(inv.status)}</div>
+        </div>
+        <div className="flex justify-end gap-3 mt-6">
+          <BtnSecondary onClick={()=>{downloadCSV([inv],'invoice-'+inv.id+'.csv'); showToast('CSV出力しました');}}>CSV出力</BtnSecondary>
+          <BtnPrimary onClick={close}>閉じる</BtnPrimary>
+        </div>
+      </Modal>
+    );
+  }
+
+  return null;
+};
+
+// ==================== Sidebar ====================
+const Sidebar = ({ page, setPage }) => (
+  <div className="w-56 bg-slate-800 flex flex-col flex-shrink-0 h-screen overflow-y-auto">
+    <div className="px-4 py-5 border-b border-slate-700">
+      <div className="text-blue-400 font-bold text-lg tracking-wide">RAGNIZE</div>
+      <div className="text-slate-400 text-xs mt-0.5">管理プラットフォーム</div>
+    </div>
+    <nav className="flex-1 py-2">
+      {MENU_ITEMS.map(item=>(
+        <button key={item.id} onClick={()=>setPage(item.id)}
+          className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors text-left
+            ${page===item.id ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>
+          <span className="text-base w-5 text-center">{item.icon}</span>
+          <span>{item.label}</span>
+        </button>
+      ))}
+    </nav>
+    <div className="px-4 py-3 border-t border-slate-700 text-slate-500 text-xs">v2.4.1</div>
+  </div>
+);
+
+// ==================== Header ====================
+const Header = ({ role, setRole, page }) => {
+  const pageLabel = MENU_ITEMS.find(m=>m.id===page)?.label || '';
+  const roles = [
+    { value:'superAdmin', label:'スーパーアドミン' },
+    { value:'agency', label:'代理店' },
+    { value:'subagency', label:'孫代理店' },
+    { value:'tenant', label:'テナント' },
+  ];
+  return (
+    <div className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 flex-shrink-0">
+      <h1 className="font-semibold text-slate-800">{pageLabel}</h1>
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-500">表示ロール:</span>
+          <select value={role} onChange={e=>setRole(e.target.value)}
+            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            {roles.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}
+          </select>
+        </div>
+        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">管</div>
+      </div>
+    </div>
+  );
+};
+
+// ==================== KPI Card ====================
+const KPICard = ({ title, value, sub, color='blue', icon }) => {
+  const colors = { blue:'bg-blue-50 text-blue-600', green:'bg-green-50 text-green-600', orange:'bg-orange-50 text-orange-600', red:'bg-red-50 text-red-600', purple:'bg-purple-50 text-purple-600' };
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-5 border border-slate-100">
+      <div className="flex items-start justify-between mb-3">
+        <p className="text-xs text-slate-500">{title}</p>
+        {icon && <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm ${colors[color]||colors.blue}`}>{icon}</span>}
+      </div>
+      <p className="text-2xl font-bold text-slate-800">{value}</p>
+      {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
+    </div>
+  );
+};
+
+// ==================== Table ====================
+const Table = ({ cols, rows, onRowClick }) => (
+  <div className="overflow-x-auto">
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="bg-slate-50 border-b border-slate-200">
+          {cols.map(c=><th key={c.key||c} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">{c.label||c}</th>)}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row,i)=>(
+          <tr key={i} onClick={()=>onRowClick&&onRowClick(row)}
+            className={`border-b border-slate-100 ${onRowClick?'cursor-pointer hover:bg-blue-50':''}`}>
+            {cols.map(c=>(
+              <td key={c.key||c} className="px-4 py-3 text-slate-700 whitespace-nowrap">
+                {c.render ? c.render(row[c.key],row) : row[c.key||c]}
+              </td>
+            ))}
+          </tr>
+        ))}
+        {rows.length===0 && <tr><td colSpan={cols.length} className="px-4 py-8 text-center text-slate-400">データがありません</td></tr>}
+      </tbody>
+    </table>
+  </div>
+);
+
+const SearchBar = ({ value, onChange, placeholder='検索...' }) => (
+  <div className="relative">
+    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+    <input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
+      className="pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"/>
+  </div>
+);
+
+const Card = ({ children, className='' }) => <div className={`bg-white rounded-xl shadow-sm border border-slate-100 ${className}`}>{children}</div>;
+const CardHeader = ({ title, children }) => (
+  <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+    <h3 className="font-semibold text-slate-800 text-sm">{title}</h3>
+    <div className="flex items-center gap-2">{children}</div>
+  </div>
+);
+
+// ==================== Dashboard ====================
+const mrrData = [
+  {month:'10月',mrr:42},{month:'11月',mrr:46},{month:'12月',mrr:50},{month:'1月',mrr:55},{month:'2月',mrr:59},{month:'3月',mrr:62.5}
+];
+const pieData = [
+  {name:'ナツメAI',value:35},{name:'架電AI',value:28},{name:'受電AI',value:18},{name:'面接',value:10},{name:'マドモアゼル',value:6},{name:'その他',value:3}
+];
+const PIE_COLORS = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#94a3b8'];
+
+const DashboardPage = ({ data }) => (
+  <div className="space-y-6">
+    <div className="grid grid-cols-4 gap-4">
+      <KPICard title="当月MRR" value="¥6,250万" sub="+5.9% 前月比" color="blue" icon="¥"/>
+      <KPICard title="累計売上" value="¥3.1億" sub="2024年4月〜" color="green" icon="↑"/>
+      <KPICard title="契約テナント数" value="42社" sub="+2社 前月比" color="purple" icon="◉"/>
+      <KPICard title="未入金合計" value="¥245万" sub="2件未入金" color="red" icon="!"/>
+    </div>
+    <div className="grid grid-cols-4 gap-4">
+      <KPICard title="代理店数" value="12社" color="blue" icon="◈"/>
+      <KPICard title="新規契約" value="7件" sub="当月" color="green" icon="✓"/>
+      <KPICard title="解約" value="2件" sub="当月" color="orange" icon="✗"/>
+      <KPICard title="通話時間" value="8,240分" sub="当月合計" color="purple" icon="○"/>
+    </div>
+    <div className="grid grid-cols-2 gap-6">
+      <Card>
+        <CardHeader title="MRR推移（百万円）"/>
+        <div className="p-4">
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={mrrData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9"/>
+              <XAxis dataKey="month" tick={{fontSize:12}}/>
+              <YAxis tick={{fontSize:12}} domain={[30,70]}/>
+              <Tooltip formatter={(v)=>`¥${v}M`}/>
+              <Line type="monotone" dataKey="mrr" stroke="#3b82f6" strokeWidth={2} dot={{r:4}}/>
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+      <Card>
+        <CardHeader title="製品別売上構成"/>
+        <div className="p-4">
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({name,value})=>`${name} ${value}%`} labelLine={false} fontSize={11}>
+                {pieData.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}
+              </Pie>
+              <Tooltip formatter={(v)=>`${v}%`}/>
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+    </div>
+    <div className="grid grid-cols-2 gap-6">
+      <Card>
+        <CardHeader title="最新契約"/>
+        <Table
+          cols={[{key:'id',label:'契約ID'},{key:'tenant',label:'テナント'},{key:'product',label:'製品'},{key:'monthlyFee',label:'月額',render:v=>fmtY(v)},{key:'status',label:'状態',render:v=>statusBadge(v)}]}
+          rows={data.contracts.slice(0,5)}
+        />
+      </Card>
+      <Card>
+        <CardHeader title="請求状況"/>
+        <Table
+          cols={[{key:'id',label:'請求ID'},{key:'tenant',label:'テナント'},{key:'total',label:'合計',render:v=>fmtY(v)},{key:'status',label:'状態',render:v=>statusBadge(v)}]}
+          rows={data.invoices}
+        />
+      </Card>
+    </div>
+  </div>
+);
+
+// ==================== Sales ====================
+const salesBarData = [
+  {month:'10月',月額:38,従量:3,トークン:1},{month:'11月',月額:41,従量:4,トークン:1},{month:'12月',月額:44,従量:5,トークン:1},
+  {month:'1月',月額:48,従量:6,トークン:1},{month:'2月',月額:51,従量:6,トークン:2},{month:'3月',月額:49,従量:10,トークン:3.5},
+];
+const agencyRanking = [
+  {name:'㈱スマートビジネス',mrr:2100000,rate:'+8%'},{name:'㈱テクノソリューション',mrr:1850000,rate:'+3%'},
+  {name:'デジタルパートナーズ㈱',mrr:1240000,rate:'+12%'},{name:'㈱ウェーブソリューション',mrr:980000,rate:'+5%'},
+];
+
+const SalesPage = ({ data, showToast }) => {
+  const [search, setSearch] = React.useState('');
+  const detail = data.contracts.filter(c=>c.tenant.includes(search)||c.product.includes(search)||c.agency.includes(search));
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div/>
+        <div className="flex gap-3">
+          <BtnSecondary onClick={()=>showToast('期間変更機能は準備中です','info')}>期間変更</BtnSecondary>
+          <BtnPrimary onClick={()=>{downloadCSV(data.contracts,'sales.csv');showToast('CSV出力しました');}}>CSV出力</BtnPrimary>
+        </div>
+      </div>
+      <div className="grid grid-cols-4 gap-4">
+        <KPICard title="当月売上合計" value="¥6,250万" color="blue" icon="¥"/>
+        <KPICard title="月額売上" value="¥4,900万" color="green" icon="◻"/>
+        <KPICard title="従量売上" value="¥1,000万" color="orange" icon="↑"/>
+        <KPICard title="トークン売上" value="¥350万" color="purple" icon="◆"/>
+      </div>
+      <div className="grid grid-cols-3 gap-6">
+        <div className="col-span-2">
+          <Card>
+            <CardHeader title="売上内訳推移（百万円）"/>
+            <div className="p-4">
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={salesBarData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9"/>
+                  <XAxis dataKey="month" tick={{fontSize:12}}/>
+                  <YAxis tick={{fontSize:12}}/>
+                  <Tooltip/>
+                  <Legend/>
+                  <Bar dataKey="月額" stackId="a" fill="#3b82f6"/>
+                  <Bar dataKey="従量" stackId="a" fill="#10b981"/>
+                  <Bar dataKey="トークン" stackId="a" fill="#f59e0b"/>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </div>
+        <Card>
+          <CardHeader title="代理店別売上ランキング"/>
+          <div className="p-4 space-y-3">
+            {agencyRanking.map((a,i)=>(
+              <div key={i} className="flex items-center gap-3">
+                <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center">{i+1}</span>
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-slate-700">{a.name}</div>
+                  <div className="text-xs text-slate-500">{fmtY(a.mrr)}</div>
+                </div>
+                <span className="text-xs text-green-600 font-medium">{a.rate}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+      <Card>
+        <CardHeader title="売上明細">
+          <SearchBar value={search} onChange={setSearch} placeholder="テナント/製品/代理店"/>
+        </CardHeader>
+        <Table
+          cols={[{key:'id',label:'契約ID'},{key:'tenant',label:'テナント'},{key:'agency',label:'代理店'},{key:'product',label:'製品'},{key:'monthlyFee',label:'月額',render:v=>fmtY(v)},{key:'status',label:'状態',render:v=>statusBadge(v)}]}
+          rows={detail}
+        />
+      </Card>
+    </div>
+  );
+};
+
+// ==================== Billing ====================
+const BillingPage = ({ data, setData, setModal, showToast }) => {
+  const [tab, setTab] = React.useState('list');
+  const [search, setSearch] = React.useState('');
+  const unpaid = data.invoices.filter(i=>i.status==='未入金');
+  const filtered = data.invoices.filter(i=>i.tenant.includes(search)||i.id.includes(search));
+
+  const closingProcess = () => setModal({ type:'confirm', data:{
+    title:'月次締め処理', message:'2025年3月の月次締め処理を実行します。よろしいですか？',
+    onConfirm:()=>showToast('月次締め処理を完了しました')
+  }});
+  const sendReminder = (inv) => setModal({ type:'confirm', data:{
+    title:'督促メール送信', message:`${inv.tenant} に督促メールを送信しますか？`,
+    onConfirm:()=>showToast('督促メールを送信しました')
+  }});
+
+  return (
+    <div className="space-y-6">
+      <div className="flex gap-3 justify-end">
+        <BtnSecondary onClick={closingProcess}>月次締め処理</BtnSecondary>
+        <BtnPrimary onClick={()=>setModal({type:'invoiceNew',data:{}})}>+請求書発行</BtnPrimary>
+      </div>
+      <div className="grid grid-cols-4 gap-4">
+        <KPICard title="当月請求総額" value="¥815,000" color="blue" icon="¥"/>
+        <KPICard title="入金済" value="¥85,000" color="green" icon="✓"/>
+        <KPICard title="未入金" value="¥245,000" sub="2件" color="red" icon="!"/>
+        <KPICard title="発行済" value="¥485,000" sub="3件" color="orange" icon="≡"/>
+      </div>
+      <div className="flex gap-1 border-b border-slate-200">
+        {[['list','請求一覧'],['unpaid','未入金管理'],['issue','請求書発行']].map(([id,label])=>(
+          <button key={id} onClick={()=>setTab(id)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab===id?'border-blue-600 text-blue-600':'border-transparent text-slate-500 hover:text-slate-700'}`}>
+            {label}{id==='unpaid'&&unpaid.length>0&&<span className="ml-1 bg-red-500 text-white text-xs rounded-full px-1.5">{unpaid.length}</span>}
+          </button>
+        ))}
+      </div>
+      {tab==='list' && (
+        <Card>
+          <CardHeader title="請求一覧">
+            <SearchBar value={search} onChange={setSearch}/>
+            <BtnSecondary onClick={()=>{downloadCSV(data.invoices,'invoices.csv');showToast('CSV出力しました');}}>CSV出力</BtnSecondary>
+          </CardHeader>
+          <Table
+            cols={[{key:'id',label:'請求書ID'},{key:'tenant',label:'テナント'},{key:'month',label:'請求月'},{key:'basicFee',label:'基本料金',render:v=>fmtY(v)},{key:'usageFee',label:'従量',render:v=>fmtY(v)},{key:'total',label:'合計',render:v=>fmtY(v)},{key:'dueDate',label:'期日'},{key:'status',label:'状態',render:v=>statusBadge(v)}]}
+            rows={filtered}
+            onRowClick={row=>setModal({type:'invoiceDetail',data:row})}
+          />
+        </Card>
+      )}
+      {tab==='unpaid' && (
+        <div className="space-y-4">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+            <span className="text-red-500 text-xl">⚠</span>
+            <div>
+              <p className="text-sm font-medium text-red-700">未入金が {unpaid.length} 件あります</p>
+              <p className="text-xs text-red-500">合計 {fmtY(unpaid.reduce((s,i)=>s+i.total,0))} が未回収です</p>
+            </div>
+          </div>
+          <Card>
+            <CardHeader title="未入金一覧"/>
+            <Table
+              cols={[{key:'id',label:'請求書ID'},{key:'tenant',label:'テナント'},{key:'total',label:'合計',render:v=>fmtY(v)},{key:'dueDate',label:'期日'},{key:'status',label:'状態',render:v=>statusBadge(v)},
+                {key:'_',label:'操作',render:(_,row)=><button onClick={e=>{e.stopPropagation();sendReminder(row);}} className="text-xs bg-orange-100 text-orange-700 hover:bg-orange-200 px-2 py-1 rounded">督促送信</button>}
+              ]}
+              rows={unpaid}
+            />
+          </Card>
+        </div>
+      )}
+      {tab==='issue' && (
+        <Card>
+          <CardHeader title="月次一括発行"/>
+          <div className="p-6 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div><label className="block text-sm font-medium text-slate-700 mb-1">対象月</label>
+                <Input type="month" defaultValue="2025-03"/></div>
+              <div><label className="block text-sm font-medium text-slate-700 mb-1">対象テナント</label>
+                <Select defaultValue="all"><option value="all">全テナント</option>{data.tenants.map(t=><option key={t.id}>{t.name}</option>)}</Select>
+              </div>
+            </div>
+            <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-700">
+              対象テナント: {data.tenants.filter(t=>t.status==='契約中').length}社 | 推定合計: {fmtY(data.tenants.filter(t=>t.status==='契約中').reduce((s,t)=>s+t.mrr,0))}
+            </div>
+            <BtnPrimary onClick={()=>showToast('請求書を一括発行しました')}>一括発行する</BtnPrimary>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+// ==================== Agency ====================
+const AgencyPage = ({ data, setData, setModal, showToast }) => {
+  const [search, setSearch] = React.useState('');
+  const filtered = data.agencies.filter(a=>a.name.includes(search)||a.code.includes(search));
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <SearchBar value={search} onChange={setSearch} placeholder="代理店名・コード"/>
+        <div className="flex gap-3">
+          <BtnSecondary onClick={()=>{downloadCSV(data.agencies,'agencies.csv');showToast('CSV出力しました');}}>CSV出力</BtnSecondary>
+          <BtnPrimary onClick={()=>setModal({type:'agencyNew',data:{}})}>+代理店登録</BtnPrimary>
+        </div>
+      </div>
+      <Card>
+        <Table
+          cols={[{key:'id',label:'ID'},{key:'name',label:'代理店名'},{key:'code',label:'コード'},{key:'subCount',label:'孫代理店'},{key:'tenantCount',label:'テナント数'},{key:'mrr',label:'MRR',render:v=>fmtY(v)},{key:'commission',label:'手数料',render:v=>fmtY(v)},{key:'status',label:'状態',render:v=>statusBadge(v)},{key:'startDate',label:'開始日'}]}
+          rows={filtered}
+          onRowClick={row=>setModal({type:'agencyEdit',data:{...row}})}
+        />
+      </Card>
+    </div>
+  );
+};
+
+// ==================== SubAgency ====================
+const SubAgencyPage = ({ data, setData, setModal, showToast }) => {
+  const [search, setSearch] = React.useState('');
+  const filtered = data.subagencies.filter(a=>a.name.includes(search)||a.parentAgency.includes(search));
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <SearchBar value={search} onChange={setSearch} placeholder="孫代理店名・親代理店"/>
+        <div className="flex gap-3">
+          <BtnSecondary onClick={()=>{downloadCSV(data.subagencies,'subagencies.csv');showToast('CSV出力しました');}}>CSV出力</BtnSecondary>
+          <BtnPrimary onClick={()=>setModal({type:'subagencyNew',data:{}})}>+孫代理店登録</BtnPrimary>
+        </div>
+      </div>
+      <Card>
+        <Table
+          cols={[{key:'id',label:'ID'},{key:'name',label:'孫代理店名'},{key:'code',label:'コード'},{key:'parentAgency',label:'親代理店'},{key:'tenantCount',label:'テナント数'},{key:'mrr',label:'MRR',render:v=>fmtY(v)},{key:'commission',label:'手数料',render:v=>fmtY(v)},{key:'status',label:'状態',render:v=>statusBadge(v)}]}
+          rows={filtered}
+          onRowClick={row=>setModal({type:'subagencyEdit',data:{...row}})}
+        />
+      </Card>
+    </div>
+  );
+};
+
+// ==================== Tenant ====================
+const TenantPage = ({ data, setData, setModal, showToast }) => {
+  const [search, setSearch] = React.useState('');
+  const filtered = data.tenants.filter(t=>t.name.includes(search)||t.agency.includes(search));
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <SearchBar value={search} onChange={setSearch} placeholder="テナント名・代理店"/>
+        <div className="flex gap-3">
+          <BtnSecondary onClick={()=>{downloadCSV(data.tenants,'tenants.csv');showToast('CSV出力しました');}}>CSV出力</BtnSecondary>
+          <BtnPrimary onClick={()=>setModal({type:'tenantNew',data:{}})}>+テナント登録</BtnPrimary>
+        </div>
+      </div>
+      <Card>
+        <Table
+          cols={[{key:'id',label:'ID'},{key:'name',label:'テナント名'},{key:'agency',label:'代理店'},{key:'products',label:'製品',render:v=>Array.isArray(v)?v.join(', '):v},{key:'mrr',label:'MRR',render:v=>fmtY(v)},{key:'startDate',label:'開始月'},{key:'status',label:'状態',render:v=>statusBadge(v)}]}
+          rows={filtered}
+          onRowClick={row=>setModal({type:'tenantEdit',data:{...row}})}
+        />
+      </Card>
+    </div>
+  );
+};
+
+// ==================== Contract ====================
+const ContractPage = ({ data, setData, setModal, showToast }) => {
+  const [search, setSearch] = React.useState('');
+  const filtered = data.contracts.filter(c=>c.tenant.includes(search)||c.product.includes(search)||c.id.includes(search));
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <SearchBar value={search} onChange={setSearch} placeholder="テナント/製品/契約ID"/>
+        <div className="flex gap-3">
+          <BtnSecondary onClick={()=>{downloadCSV(data.contracts,'contracts.csv');showToast('CSV出力しました');}}>CSV出力</BtnSecondary>
+          <BtnPrimary onClick={()=>setModal({type:'contractNew',data:{}})}>+新規契約作成</BtnPrimary>
+        </div>
+      </div>
+      <Card>
+        <Table
+          cols={[{key:'id',label:'契約ID'},{key:'tenant',label:'テナント'},{key:'agency',label:'代理店'},{key:'product',label:'製品'},{key:'startDate',label:'開始日'},{key:'endDate',label:'終了日'},{key:'monthlyFee',label:'月額',render:v=>fmtY(v)},{key:'status',label:'状態',render:v=>statusBadge(v)},{key:'econtract',label:'電子契約',render:v=>statusBadge(v)}]}
+          rows={filtered}
+          onRowClick={row=>setModal({type:'contractEdit',data:{...row}})}
+        />
+      </Card>
+    </div>
+  );
+};
+
+// ==================== Product ====================
+const ProductPage = ({ data, setData, setModal, showToast }) => {
+  const [search, setSearch] = React.useState('');
+  const filtered = data.products.filter(p=>p.name.includes(search)||p.category.includes(search));
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <SearchBar value={search} onChange={setSearch} placeholder="製品名・カテゴリ"/>
+        <div className="flex gap-3">
+          <BtnSecondary onClick={()=>{downloadCSV(data.products,'products.csv');showToast('CSV出力しました');}}>CSV出力</BtnSecondary>
+          <BtnPrimary onClick={()=>setModal({type:'productNew',data:{}})}>+製品登録</BtnPrimary>
+        </div>
+      </div>
+      <Card>
+        <Table
+          cols={[{key:'id',label:'ID'},{key:'name',label:'製品名'},{key:'category',label:'カテゴリ'},{key:'billingType',label:'課金タイプ'},{key:'basicFee',label:'基本料金',render:v=>fmtY(v)},{key:'initialFee',label:'初期費用',render:v=>fmtY(v)},{key:'agencyRate',label:'代理店率',render:v=>`${v}%`},{key:'usage',label:'利用社数'},{key:'status',label:'状態',render:v=>statusBadge(v)}]}
+          rows={filtered}
+          onRowClick={row=>setModal({type:'productEdit',data:{...row}})}
+        />
+      </Card>
+    </div>
+  );
+};
+
+// ==================== Pricing ====================
+const PricingPage = ({ data, showToast }) => {
+  const [tab, setTab] = React.useState('call');
+  const [callPrice, setCallPrice] = React.useState({ outbound:2, inbound:2, unitSec:1 });
+  const [tokenPrice, setTokenPrice] = React.useState({ mado:0.01, koi:0.008 });
+  const [monthlyPrices, setMonthlyPrices] = React.useState(
+    Object.fromEntries(data.products.filter(p=>p.billingType!=='月額+トークン').map(p=>[p.id,p.basicFee]))
+  );
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-1 border-b border-slate-200">
+        {[['call','通話課金'],['token','トークン課金'],['monthly','月額課金']].map(([id,label])=>(
+          <button key={id} onClick={()=>setTab(id)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${tab===id?'border-blue-600 text-blue-600':'border-transparent text-slate-500'}`}>{label}</button>
+        ))}
+      </div>
+      {tab==='call' && (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader title="通話課金単価設定"/>
+            <div className="p-6 grid grid-cols-3 gap-6">
+              {[['outbound','架電単価（円/秒）',callPrice.outbound],['inbound','受電単価（円/秒）',callPrice.inbound],['unitSec','課金単位（秒）',callPrice.unitSec]].map(([key,label,val])=>(
+                <div key={key}>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+                  <Input type="number" step="0.1" value={val} onChange={e=>setCallPrice({...callPrice,[key]:e.target.value})}/>
+                </div>
+              ))}
+            </div>
+            <div className="px-6 pb-6"><BtnPrimary onClick={()=>showToast('通話課金設定を保存しました')}>設定を保存</BtnPrimary></div>
+          </Card>
+        </div>
+      )}
+      {tab==='token' && (
+        <Card>
+          <CardHeader title="トークン課金単価設定"/>
+          <div className="p-6 grid grid-cols-2 gap-6">
+            {[['mado','マドモアゼルAI（円/トークン）',tokenPrice.mado],['koi','恋テレ（円/トークン）',tokenPrice.koi]].map(([key,label,val])=>(
+              <div key={key}>
+                <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+                <Input type="number" step="0.001" value={val} onChange={e=>setTokenPrice({...tokenPrice,[key]:e.target.value})}/>
+              </div>
+            ))}
+          </div>
+          <div className="px-6 pb-6"><BtnPrimary onClick={()=>showToast('トークン課金設定を保存しました')}>設定を保存</BtnPrimary></div>
+        </Card>
+      )}
+      {tab==='monthly' && (
+        <Card>
+          <CardHeader title="月額課金設定"/>
+          <div className="p-6 grid grid-cols-2 gap-4">
+            {data.products.filter(p=>p.billingType!=='月額+トークン').map(p=>(
+              <div key={p.id}>
+                <label className="block text-sm font-medium text-slate-700 mb-1">{p.name}（円/月）</label>
+                <Input type="number" value={monthlyPrices[p.id]||0} onChange={e=>setMonthlyPrices({...monthlyPrices,[p.id]:e.target.value})}/>
+              </div>
+            ))}
+          </div>
+          <div className="px-6 pb-6"><BtnPrimary onClick={()=>showToast('月額課金設定を保存しました')}>設定を保存</BtnPrimary></div>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+// ==================== CallLog ====================
+const callKpiData = [
+  {month:'10月',分数:6200},{month:'11月',分数:6800},{month:'12月',分数:7100},{month:'1月',分数:7600},{month:'2月',分数:7900},{month:'3月',分数:8240},
+];
+const CallLogPage = ({ data, showToast }) => {
+  const [search, setSearch] = React.useState('');
+  const filtered = data.callLogs.filter(c=>c.tenant.includes(search)||c.type.includes(search));
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-4 gap-4">
+        <KPICard title="当月通話時間" value="8,240分" color="blue" icon="○"/>
+        <KPICard title="架電件数" value="5,120件" color="green" icon="↑"/>
+        <KPICard title="受電件数" value="3,120件" color="purple" icon="↓"/>
+        <KPICard title="通話料金合計" value="¥987,040" color="orange" icon="¥"/>
+      </div>
+      <Card>
+        <CardHeader title="月別通話時間推移"/>
+        <div className="p-4">
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={callKpiData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9"/>
+              <XAxis dataKey="month" tick={{fontSize:12}}/><YAxis tick={{fontSize:12}}/>
+              <Tooltip/><Bar dataKey="分数" fill="#3b82f6"/>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+      <Card>
+        <CardHeader title="通話ログ">
+          <SearchBar value={search} onChange={setSearch}/>
+          <BtnSecondary onClick={()=>{downloadCSV(data.callLogs,'calllogs.csv');showToast('CSV出力しました');}}>CSV出力</BtnSecondary>
+        </CardHeader>
+        <Table
+          cols={[{key:'id',label:'ID'},{key:'tenant',label:'テナント'},{key:'type',label:'種別'},{key:'date',label:'日付'},{key:'duration',label:'通話時間'},{key:'unitPrice',label:'単価'},{key:'amount',label:'料金',render:v=>fmtY(v)},{key:'status',label:'状態',render:v=>statusBadge(v)}]}
+          rows={filtered}
+        />
+      </Card>
+    </div>
+  );
+};
+
+// ==================== Token ====================
+const TokenPage = ({ data, showToast }) => {
+  const [search, setSearch] = React.useState('');
+  const filtered = data.tokenLogs.filter(t=>t.tenant.includes(search)||t.event.includes(search));
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-4 gap-4">
+        <KPICard title="総付与トークン" value="150,000" color="blue" icon="◆"/>
+        <KPICard title="消費トークン" value="1,750" color="orange" icon="↓"/>
+        <KPICard title="残高合計" value="146,700" color="green" icon="○"/>
+        <KPICard title="トークン売上" value="¥1,505" color="purple" icon="¥"/>
+      </div>
+      <Card>
+        <CardHeader title="トークン残高推移">
+          <BtnSecondary onClick={()=>showToast('トークン付与機能は別途管理画面から行えます','info')}>トークン付与</BtnSecondary>
+        </CardHeader>
+        <div className="p-4">
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={[{date:'03/01',残高:100000},{date:'03/05',残高:98800},{date:'03/10',残高:148800},{date:'03/12',残高:96700}]}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9"/>
+              <XAxis dataKey="date" tick={{fontSize:12}}/><YAxis tick={{fontSize:12}}/>
+              <Tooltip/><Line type="monotone" dataKey="残高" stroke="#8b5cf6" strokeWidth={2}/>
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+      <Card>
+        <CardHeader title="トークンログ">
+          <SearchBar value={search} onChange={setSearch}/>
+          <BtnSecondary onClick={()=>{downloadCSV(data.tokenLogs,'tokenlogs.csv');showToast('CSV出力しました');}}>CSV出力</BtnSecondary>
+        </CardHeader>
+        <Table
+          cols={[{key:'id',label:'ID'},{key:'tenant',label:'テナント/製品'},{key:'event',label:'イベント'},{key:'tokens',label:'トークン数',render:v=>fmt(v)},{key:'unitPrice',label:'単価'},{key:'amount',label:'金額',render:v=>fmtY(v)},{key:'balance',label:'残高',render:v=>fmt(v)},{key:'date',label:'日付'}]}
+          rows={filtered}
+        />
+      </Card>
+    </div>
+  );
+};
+
+// ==================== Report ====================
+const ReportPage = ({ data, showToast }) => {
+  const mrrBar = [
+    {month:'10月',MRR:42},{month:'11月',MRR:46},{month:'12月',MRR:50},{month:'1月',MRR:55},{month:'2月',MRR:59},{month:'3月',MRR:62.5}
+  ];
+  const tenantBar = [
+    {month:'10月',新規:3,解約:1},{month:'11月',新規:5,解約:0},{month:'12月',新規:4,解約:2},{month:'1月',新規:6,解約:1},{month:'2月',新規:4,解約:0},{month:'3月',新規:7,解約:2}
+  ];
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-4 gap-4">
+        <KPICard title="累計MRR" value="¥6,250万" color="blue" icon="¥"/>
+        <KPICard title="累計テナント数" value="42社" color="green" icon="◉"/>
+        <KPICard title="チャーンレート" value="4.8%" color="red" icon="↓"/>
+        <KPICard title="ARPU" value="¥148,810" color="purple" icon="↑"/>
+      </div>
+      <div className="grid grid-cols-2 gap-6">
+        <Card>
+          <CardHeader title="MRR推移">
+            <BtnSecondary onClick={()=>{downloadCSV(mrrBar,'report-mrr.csv');showToast('MRRレポートをCSV出力しました');}}>CSV</BtnSecondary>
+          </CardHeader>
+          <div className="p-4">
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={mrrBar}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9"/>
+                <XAxis dataKey="month" tick={{fontSize:12}}/><YAxis tick={{fontSize:12}}/>
+                <Tooltip formatter={v=>`¥${v}M`}/><Line type="monotone" dataKey="MRR" stroke="#3b82f6" strokeWidth={2}/>
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+        <Card>
+          <CardHeader title="テナント増減">
+            <BtnSecondary onClick={()=>{downloadCSV(tenantBar,'report-tenant.csv');showToast('テナントレポートをCSV出力しました');}}>CSV</BtnSecondary>
+          </CardHeader>
+          <div className="p-4">
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={tenantBar}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9"/>
+                <XAxis dataKey="month" tick={{fontSize:12}}/><YAxis tick={{fontSize:12}}/>
+                <Tooltip/><Legend/>
+                <Bar dataKey="新規" fill="#10b981"/><Bar dataKey="解約" fill="#ef4444"/>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+        <Card>
+          <CardHeader title="製品別売上">
+            <BtnSecondary onClick={()=>{downloadCSV(pieData,'report-product.csv');showToast('製品レポートをCSV出力しました');}}>CSV</BtnSecondary>
+          </CardHeader>
+          <div className="p-4">
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie data={pieData} cx="50%" cy="50%" outerRadius={70} dataKey="value" label={({name,value})=>`${name} ${value}%`} labelLine={false} fontSize={10}>
+                  {pieData.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}
+                </Pie>
+                <Tooltip formatter={v=>`${v}%`}/>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+        <Card>
+          <CardHeader title="代理店別実績">
+            <BtnSecondary onClick={()=>{downloadCSV(data.agencies,'report-agency.csv');showToast('代理店レポートをCSV出力しました');}}>CSV</BtnSecondary>
+          </CardHeader>
+          <div className="p-4 space-y-3">
+            {data.agencies.filter(a=>a.mrr>0).sort((a,b)=>b.mrr-a.mrr).map(a=>(
+              <div key={a.id} className="flex items-center gap-3">
+                <span className="text-xs text-slate-500 w-20 truncate">{a.name}</span>
+                <div className="flex-1 bg-slate-100 rounded-full h-2">
+                  <div className="bg-blue-500 h-2 rounded-full" style={{width:`${Math.round(a.mrr/21000)}%`}}/>
+                </div>
+                <span className="text-xs font-medium text-slate-700 w-20 text-right">{fmtY(a.mrr)}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+      <div className="flex justify-end gap-3">
+        <BtnPrimary onClick={()=>{downloadCSV([...data.contracts,...data.invoices],'report-full.csv');showToast('全データをCSV出力しました');}}>全データ出力</BtnPrimary>
+      </div>
+    </div>
+  );
+};
+
+// ==================== EContract ====================
+const EContractPage = ({ data, setData, setModal, showToast }) => {
+  const [tab, setTab] = React.useState('list');
+  const [search, setSearch] = React.useState('');
+  const filtered = data.econtracts.filter(e=>e.tenant.includes(search)||e.id.includes(search));
+  const pending = data.econtracts.filter(e=>['署名中','送信済'].includes(e.status));
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <div className="flex gap-1 border-b border-slate-200">
+          {[['list','契約書一覧'],['template','テンプレート管理'],['pending','署名中/送信待ち']].map(([id,label])=>(
+            <button key={id} onClick={()=>setTab(id)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${tab===id?'border-blue-600 text-blue-600':'border-transparent text-slate-500'}`}>
+              {label}{id==='pending'&&pending.length>0&&<span className="ml-1 bg-orange-500 text-white text-xs rounded-full px-1.5">{pending.length}</span>}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-3">
+          {tab==='template' && <BtnSecondary onClick={()=>showToast('テンプレート追加機能は準備中です','info')}>テンプレート追加</BtnSecondary>}
+          <BtnPrimary onClick={()=>setModal({type:'econtractNew',data:{}})}>+新規送信</BtnPrimary>
+        </div>
+      </div>
+      {tab==='list' && (
+        <Card>
+          <CardHeader title="電子契約一覧">
+            <SearchBar value={search} onChange={setSearch}/>
+            <BtnSecondary onClick={()=>{downloadCSV(data.econtracts,'econtracts.csv');showToast('CSV出力しました');}}>CSV出力</BtnSecondary>
+          </CardHeader>
+          <Table
+            cols={[{key:'id',label:'ID'},{key:'contractId',label:'契約ID'},{key:'tenant',label:'テナント'},{key:'type',label:'種別'},{key:'sentDate',label:'送信日'},{key:'signedDate',label:'署名日'},{key:'status',label:'状態',render:v=>statusBadge(v)}]}
+            rows={filtered}
+          />
+        </Card>
+      )}
+      {tab==='template' && (
+        <Card>
+          <div className="p-6">
+            <div className="grid grid-cols-3 gap-4">
+              {['新規契約書テンプレート','更新契約書テンプレート','トライアル契約書テンプレート'].map((name,i)=>(
+                <div key={i} className="border border-slate-200 rounded-xl p-4 hover:border-blue-300 cursor-pointer">
+                  <div className="text-3xl mb-2">📄</div>
+                  <div className="text-sm font-medium text-slate-700">{name}</div>
+                  <div className="text-xs text-slate-400 mt-1">最終更新: 2025-02-01</div>
+                  <div className="flex gap-2 mt-3">
+                    <button className="text-xs text-blue-600 hover:underline">編集</button>
+                    <button className="text-xs text-slate-400 hover:underline">プレビュー</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+      )}
+      {tab==='pending' && (
+        <Card>
+          <CardHeader title="署名待ち・送信済み一覧"/>
+          <Table
+            cols={[{key:'id',label:'ID'},{key:'tenant',label:'テナント'},{key:'type',label:'種別'},{key:'sentDate',label:'送信日'},{key:'status',label:'状態',render:v=>statusBadge(v)},
+              {key:'_',label:'操作',render:(_,row)=><button onClick={e=>{e.stopPropagation();setModal({type:'confirm',data:{title:'リマインド送信',message:`${row.tenant} にリマインドメールを送信しますか？`,onConfirm:()=>showToast('リマインドを送信しました')}});}} className="text-xs bg-orange-100 text-orange-700 hover:bg-orange-200 px-2 py-1 rounded">リマインド</button>}
+            ]}
+            rows={pending}
+          />
+        </Card>
+      )}
+    </div>
+  );
+};
+
+// ==================== Notice ====================
+const NoticePage = ({ data, setData, setModal, showToast }) => {
+  const [search, setSearch] = React.useState('');
+  const filtered = data.notices.filter(n=>n.title.includes(search));
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <SearchBar value={search} onChange={setSearch} placeholder="タイトル"/>
+        <BtnPrimary onClick={()=>setModal({type:'noticeEdit',data:{}})}>+新規お知らせ</BtnPrimary>
+      </div>
+      <Card>
+        <CardHeader title="お知らせ一覧"/>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                {['タイトル','対象','公開日','終了日','状態','操作'].map(h=><th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500">{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((n,i)=>(
+                <tr key={i} className="border-b border-slate-100">
+                  <td className="px-4 py-3 text-slate-700 max-w-xs truncate">{n.title}</td>
+                  <td className="px-4 py-3 text-slate-500">{n.target}</td>
+                  <td className="px-4 py-3 text-slate-500">{n.publishDate}</td>
+                  <td className="px-4 py-3 text-slate-500">{n.endDate}</td>
+                  <td className="px-4 py-3">{statusBadge(n.status)}</td>
+                  <td className="px-4 py-3">
+                    <button onClick={()=>setModal({type:'noticeEdit',data:{...n}})} className="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 px-2 py-1 rounded mr-2">編集</button>
+                    <button onClick={()=>setModal({type:'confirm',data:{title:'削除確認',message:`「${n.title}」を削除しますか？`,onConfirm:()=>{setData(prev=>({...prev,notices:prev.notices.filter(x=>x.id!==n.id)}));showToast('削除しました','warning');}}})} className="text-xs bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded">削除</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+// ==================== Permission ====================
+const defaultPerms = {
+  'ダッシュボード閲覧':true,'売上管理閲覧':true,'請求管理閲覧':true,'代理店管理':true,'テナント管理':true,
+  '契約管理':true,'製品管理':true,'課金設定変更':true,'レポート出力':true,'権限管理':true,'システム設定':true
+};
+const agencyPerms = { 'ダッシュボード閲覧':true,'売上管理閲覧':true,'請求管理閲覧':true,'代理店管理':false,'テナント管理':true,'契約管理':true,'製品管理':false,'課金設定変更':false,'レポート出力':true,'権限管理':false,'システム設定':false };
+const subPerms = { 'ダッシュボード閲覧':true,'売上管理閲覧':false,'請求管理閲覧':true,'代理店管理':false,'テナント管理':true,'契約管理':false,'製品管理':false,'課金設定変更':false,'レポート出力':false,'権限管理':false,'システム設定':false };
+const tenantPerms = { 'ダッシュボード閲覧':true,'売上管理閲覧':false,'請求管理閲覧':true,'代理店管理':false,'テナント管理':false,'契約管理':false,'製品管理':false,'課金設定変更':false,'レポート出力':false,'権限管理':false,'システム設定':false };
+
+const PermissionPage = ({ setModal, showToast }) => {
+  const roles = [
+    { name:'スーパーアドミン', color:'bg-blue-100 text-blue-700', perms: defaultPerms },
+    { name:'代理店', color:'bg-green-100 text-green-700', perms: agencyPerms },
+    { name:'孫代理店', color:'bg-orange-100 text-orange-700', perms: subPerms },
+    { name:'テナント', color:'bg-purple-100 text-purple-700', perms: tenantPerms },
+  ];
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-6">
+        {roles.map(r=>(
+          <Card key={r.name}>
+            <CardHeader title={<span className={`px-2 py-1 rounded-full text-xs font-medium ${r.color}`}>{r.name}</span>}>
+              <button onClick={()=>setModal({type:'permissionEdit',data:{role:r.name,permissions:{...r.perms}}})}
+                className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg">権限編集</button>
+            </CardHeader>
+            <div className="p-4 space-y-2">
+              {Object.entries(r.perms).map(([key,val])=>(
+                <div key={key} className="flex items-center justify-between py-1">
+                  <span className="text-sm text-slate-600">{key}</span>
+                  <span className={`text-xs font-medium ${val?'text-green-600':'text-slate-400'}`}>{val?'✓ 許可':'✗ 禁止'}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ==================== Settings ====================
+const SettingsPage = ({ showToast }) => {
+  const [tab, setTab] = React.useState('basic');
+  const [basic, setBasic] = React.useState({ companyName:'CLASSIX株式会社', email:'admin@classix.co.jp', phone:'03-1234-5678', address:'東京都渋谷区...' });
+  const [apiKeys, setApiKeys] = React.useState({ docusign:'sk-doc-****-****-1234', stripe:'sk_live_****1234', sendgrid:'SG.****1234' });
+  const [notifs, setNotifs] = React.useState({ unpaidAlert:true, contractExpiry:true, newTenant:true, systemError:true, weeklyReport:false });
+  const auditLogs = [
+    { date:'2025-03-15 14:32','ユーザー':'admin@classix.co.jp', 操作:'代理店情報更新', 対象:'AG003', IP:'192.168.1.1' },
+    { date:'2025-03-15 10:15','ユーザー':'agency@techno.co.jp', 操作:'テナント追加', 対象:'TN007', IP:'203.0.113.5' },
+    { date:'2025-03-14 16:40','ユーザー':'admin@classix.co.jp', 操作:'製品価格変更', 対象:'P001', IP:'192.168.1.1' },
+    { date:'2025-03-14 09:20','ユーザー':'admin@classix.co.jp', 操作:'請求書発行', 対象:'INV-202503-001', IP:'192.168.1.1' },
+    { date:'2025-03-13 17:00','ユーザー':'subag@nextstage.co.jp', 操作:'ログイン', 対象:'-', IP:'198.51.100.2' },
+  ];
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-1 border-b border-slate-200">
+        {[['basic','基本設定'],['api','外部連携'],['notif','通知設定'],['audit','監査ログ']].map(([id,label])=>(
+          <button key={id} onClick={()=>setTab(id)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${tab===id?'border-blue-600 text-blue-600':'border-transparent text-slate-500'}`}>{label}</button>
+        ))}
+      </div>
+      {tab==='basic' && (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader title="会社情報"/>
+            <div className="p-6 grid grid-cols-2 gap-4">
+              {[['companyName','会社名'],['email','メールアドレス'],['phone','電話番号'],['address','住所']].map(([key,label])=>(
+                <div key={key} className={key==='address'?'col-span-2':''}>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+                  <Input value={basic[key]} onChange={e=>setBasic({...basic,[key]:e.target.value})}/>
+                </div>
+              ))}
+            </div>
+          </Card>
+          <Card>
+            <CardHeader title="システム設定"/>
+            <div className="p-6 space-y-4">
+              {[['タイムゾーン','Asia/Tokyo'],['通貨','JPY (日本円)'],['日付フォーマット','YYYY-MM-DD'],['言語','日本語']].map(([label,val])=>(
+                <div key={label} className="flex items-center justify-between py-2 border-b border-slate-100">
+                  <span className="text-sm text-slate-600">{label}</span>
+                  <span className="text-sm font-medium text-slate-800">{val}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+          <BtnPrimary onClick={()=>showToast('基本設定を保存しました')}>設定を保存</BtnPrimary>
+        </div>
+      )}
+      {tab==='api' && (
+        <Card>
+          <CardHeader title="API キー設定"/>
+          <div className="p-6 space-y-4">
+            {Object.entries(apiKeys).map(([key,val])=>(
+              <div key={key}>
+                <label className="block text-sm font-medium text-slate-700 mb-1">{key.charAt(0).toUpperCase()+key.slice(1)} API Key</label>
+                <div className="flex gap-2">
+                  <Input type="password" value={val} onChange={e=>setApiKeys({...apiKeys,[key]:e.target.value})} className="flex-1"/>
+                  <BtnSecondary onClick={()=>showToast(`${key} キーをコピーしました`,'info')}>コピー</BtnSecondary>
+                </div>
+              </div>
+            ))}
+            <BtnPrimary onClick={()=>showToast('API設定を保存しました')}>保存</BtnPrimary>
+          </div>
+        </Card>
+      )}
+      {tab==='notif' && (
+        <Card>
+          <CardHeader title="通知設定"/>
+          <div className="p-6 space-y-4">
+            {[['unpaidAlert','未入金アラート'],['contractExpiry','契約期限アラート'],['newTenant','新規テナント通知'],['systemError','システムエラー通知'],['weeklyReport','週次レポートメール']].map(([key,label])=>(
+              <label key={key} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg cursor-pointer">
+                <span className="text-sm text-slate-700">{label}</span>
+                <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${notifs[key]?'bg-blue-600':'bg-slate-300'}`}
+                  onClick={()=>setNotifs({...notifs,[key]:!notifs[key]})}>
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${notifs[key]?'translate-x-6':'translate-x-1'}`}/>
+                </div>
+              </label>
+            ))}
+            <BtnPrimary onClick={()=>showToast('通知設定を保存しました')}>保存</BtnPrimary>
+          </div>
+        </Card>
+      )}
+      {tab==='audit' && (
+        <Card>
+          <CardHeader title="監査ログ">
+            <BtnSecondary onClick={()=>{downloadCSV(auditLogs,'audit.csv');showToast('CSV出力しました');}}>CSV出力</BtnSecondary>
+          </CardHeader>
+          <Table
+            cols={[{key:'date',label:'日時'},{key:'ユーザー',label:'ユーザー'},{key:'操作',label:'操作'},{key:'対象',label:'対象'},{key:'IP',label:'IPアドレス'}]}
+            rows={auditLogs}
+          />
+        </Card>
+      )}
+    </div>
+  );
+};
+
+// ==================== App ====================
+const App = () => {
+  const [page, setPage] = React.useState('dashboard');
+  const [role, setRole] = React.useState('superAdmin');
+  const [data, setData] = React.useState(INITIAL_DATA);
+  const [toasts, setToasts] = React.useState([]);
+  const [modal, setModal] = React.useState(null);
+
+  const showToast = (message, type='success') => {
+    const id = Date.now() + Math.random();
+    setToasts(prev=>[...prev, {id, message, type}]);
+    setTimeout(()=>setToasts(prev=>prev.filter(t=>t.id!==id)), 3500);
+  };
+  const removeToast = (id) => setToasts(prev=>prev.filter(t=>t.id!==id));
+
+  const pageProps = { data, setData, setModal, showToast };
+
+  const renderPage = () => {
+    switch(page) {
+      case 'dashboard': return <DashboardPage {...pageProps}/>;
+      case 'sales': return <SalesPage {...pageProps}/>;
+      case 'billing': return <BillingPage {...pageProps}/>;
+      case 'agency': return <AgencyPage {...pageProps}/>;
+      case 'subagency': return <SubAgencyPage {...pageProps}/>;
+      case 'tenant': return <TenantPage {...pageProps}/>;
+      case 'contract': return <ContractPage {...pageProps}/>;
+      case 'product': return <ProductPage {...pageProps}/>;
+      case 'pricing': return <PricingPage {...pageProps}/>;
+      case 'calllog': return <CallLogPage {...pageProps}/>;
+      case 'token': return <TokenPage {...pageProps}/>;
+      case 'report': return <ReportPage {...pageProps}/>;
+      case 'econtract': return <EContractPage {...pageProps}/>;
+      case 'notice': return <NoticePage {...pageProps}/>;
+      case 'permission': return <PermissionPage {...pageProps}/>;
+      case 'settings': return <SettingsPage {...pageProps}/>;
+      default: return <DashboardPage {...pageProps}/>;
+    }
+  };
+
+  return (
+    <div className="flex h-screen bg-slate-50 text-sm overflow-hidden">
+      <Sidebar page={page} setPage={setPage}/>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header role={role} setRole={setRole} page={page}/>
+        <main className="flex-1 overflow-y-auto p-6">
+          {renderPage()}
+        </main>
+      </div>
+      <Toast toasts={toasts} removeToast={removeToast}/>
+      {modal && <ModalRenderer modal={modal} setModal={setModal} data={data} setData={setData} showToast={showToast}/>}
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
