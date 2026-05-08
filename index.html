@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RAGNIZE 管理プラットフォーム</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
@@ -19,7 +22,24 @@
 </head>
 <body>
 <div id="root"></div>
+<script>
+  window._firebaseConfig = {
+    apiKey: "AIzaSyBDn9zT8gHXB0o7yTO1LbQ_XQwRl-FjViM",
+    authDomain: "ragnize-admin.firebaseapp.com",
+    projectId: "ragnize-admin",
+    storageBucket: "ragnize-admin.firebasestorage.app",
+    messagingSenderId: "978843221026",
+    appId: "1:978843221026:web:cbccf5905c626657d9de7b"
+  };
+  firebase.initializeApp(window._firebaseConfig);
+  window._db = firebase.firestore();
+  window._auth = firebase.auth();
+</script>
 <script type="text/babel">
+const db = window._db;
+const auth = window._auth;
+const firebaseConfig = window._firebaseConfig;
+
 const { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
 
 const MENU_ITEMS = [
@@ -39,6 +59,7 @@ const MENU_ITEMS = [
   { id: 'notice', icon: '◎', label: 'お知らせ管理' },
   { id: 'permission', icon: '⊛', label: '権限管理' },
   { id: 'settings', icon: '⚙', label: 'システム設定' },
+  { id: 'users', icon: '◈', label: 'ユーザー管理' },
 ];
 
 const INITIAL_DATA = {
@@ -228,6 +249,71 @@ const Toast = ({ toasts, removeToast }) => (
         <button onClick={()=>removeToast(t.id)} className="ml-2 opacity-70 hover:opacity-100">×</button>
       </div>
     ))}
+  </div>
+);
+
+// ==================== LoginPage ====================
+const LoginPage = ({ showToast, toasts, removeToast }) => {
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+  const login = async (e) => {
+    e.preventDefault();
+    if (!email || !password) { showToast('メールアドレスとパスワードを入力してください','error'); return; }
+    setLoading(true);
+    try {
+      await auth.signInWithEmailAndPassword(email, password);
+    } catch(err) {
+      const msgs = {
+        'auth/user-not-found': 'このメールアドレスは登録されていません',
+        'auth/wrong-password': 'パスワードが正しくありません',
+        'auth/invalid-email': 'メールアドレスの形式が正しくありません',
+        'auth/too-many-requests': 'しばらく待ってから再試行してください',
+        'auth/invalid-credential': 'メールアドレスまたはパスワードが正しくありません',
+      };
+      showToast(msgs[err.code] || 'ログインに失敗しました: ' + err.code, 'error');
+      setLoading(false);
+    }
+  };
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-blue-900 flex items-center justify-center p-4">
+      <Toast toasts={toasts} removeToast={removeToast}/>
+      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="text-blue-600 font-bold text-3xl tracking-wide mb-2">RAGNIZE</div>
+          <div className="text-slate-500 text-sm">管理プラットフォーム</div>
+        </div>
+        <form onSubmit={login} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">メールアドレス</label>
+            <input type="email" value={email} onChange={e=>setEmail(e.target.value)} required
+              className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="admin@classix.co.jp" autoFocus/>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">パスワード</label>
+            <input type="password" value={password} onChange={e=>setPassword(e.target.value)} required
+              className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="••••••••"/>
+          </div>
+          <button type="submit" disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white py-2.5 rounded-lg text-sm font-medium transition-colors mt-2">
+            {loading ? 'ログイン中...' : 'ログイン'}
+          </button>
+        </form>
+        <p className="text-center text-xs text-slate-400 mt-8">CLASSIX株式会社 © 2025</p>
+      </div>
+    </div>
+  );
+};
+
+// ==================== LoadingScreen ====================
+const LoadingScreen = ({ text='読み込み中...' }) => (
+  <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+    <div className="text-center">
+      <div className="animate-spin w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+      <p className="text-slate-500 text-sm">{text}</p>
+    </div>
   </div>
 );
 
@@ -653,26 +739,23 @@ const Sidebar = ({ page, setPage }) => (
 );
 
 // ==================== Header ====================
-const Header = ({ role, setRole, page }) => {
+const Header = ({ page, userProfile, onLogout }) => {
   const pageLabel = MENU_ITEMS.find(m=>m.id===page)?.label || '';
-  const roles = [
-    { value:'superAdmin', label:'スーパーアドミン' },
-    { value:'agency', label:'代理店' },
-    { value:'subagency', label:'孫代理店' },
-    { value:'tenant', label:'テナント' },
-  ];
+  const roleLabels = { superAdmin:'スーパーアドミン', agency:'代理店', subagency:'孫代理店', tenant:'テナント' };
+  const roleColors = { superAdmin:'bg-blue-50 text-blue-700', agency:'bg-green-50 text-green-700', subagency:'bg-orange-50 text-orange-700', tenant:'bg-purple-50 text-purple-700' };
+  const role = userProfile?.role || 'superAdmin';
   return (
     <div className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 flex-shrink-0">
       <h1 className="font-semibold text-slate-800">{pageLabel}</h1>
       <div className="flex items-center gap-4">
+        <span className={`text-xs font-medium px-2 py-1 rounded-full ${roleColors[role]||'bg-slate-100 text-slate-600'}`}>{roleLabels[role]||role}</span>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500">表示ロール:</span>
-          <select value={role} onChange={e=>setRole(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            {roles.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}
-          </select>
+          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+            {((userProfile?.name||userProfile?.email||'管')[0]).toUpperCase()}
+          </div>
+          <span className="text-xs text-slate-600 max-w-xs truncate">{userProfile?.name||userProfile?.email||''}</span>
         </div>
-        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">管</div>
+        <button onClick={onLogout} className="text-xs text-slate-400 hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded transition-colors">ログアウト</button>
       </div>
     </div>
   );
@@ -1594,22 +1677,222 @@ const SettingsPage = ({ showToast }) => {
   );
 };
 
+// ==================== UsersPage ====================
+const UsersPage = ({ data, setData, showToast, currentUser, loadAllData }) => {
+  const [showAdd, setShowAdd] = React.useState(false);
+  const [form, setForm] = React.useState({ name:'', email:'', password:'', role:'agency' });
+  const [adding, setAdding] = React.useState(false);
+  const users = data.users || [];
+  const roleLabels = { superAdmin:'スーパーアドミン', agency:'代理店', subagency:'孫代理店', tenant:'テナント' };
+  const roleColors = { superAdmin:'bg-blue-100 text-blue-700', agency:'bg-green-100 text-green-700', subagency:'bg-orange-100 text-orange-700', tenant:'bg-purple-100 text-purple-700' };
+
+  const addUser = async () => {
+    if (!form.name || !form.email || !form.password) { showToast('全項目を入力してください','error'); return; }
+    if (form.password.length < 6) { showToast('パスワードは6文字以上で設定してください','error'); return; }
+    setAdding(true);
+    try {
+      const secApp = firebase.initializeApp(firebaseConfig, 'sec_'+Date.now());
+      const secAuth = secApp.auth();
+      const { user: newUser } = await secAuth.createUserWithEmailAndPassword(form.email, form.password);
+      await db.collection('users').doc(newUser.uid).set({
+        name: form.name, email: form.email, role: form.role,
+        createdAt: new Date().toISOString(), active: true
+      });
+      await secAuth.signOut();
+      await secApp.delete();
+      await loadAllData();
+      showToast(form.name + ' を追加しました');
+      setForm({ name:'', email:'', password:'', role:'agency' });
+      setShowAdd(false);
+    } catch(err) {
+      const msgs = {
+        'auth/email-already-in-use': 'このメールアドレスは既に登録されています',
+        'auth/weak-password': 'パスワードは6文字以上で設定してください',
+        'auth/invalid-email': 'メールアドレスの形式が正しくありません',
+      };
+      showToast(msgs[err.code] || 'ユーザー追加に失敗しました: '+err.code, 'error');
+    }
+    setAdding(false);
+  };
+
+  const updateRole = async (userId, newRole) => {
+    await db.collection('users').doc(userId).update({ role: newRole });
+    await loadAllData();
+    showToast('権限を更新しました');
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <p className="text-sm text-slate-500">{users.length}名登録済み</p>
+        <BtnPrimary onClick={()=>setShowAdd(!showAdd)}>+ユーザー追加</BtnPrimary>
+      </div>
+      {showAdd && (
+        <Card>
+          <CardHeader title="新規ユーザー追加"/>
+          <div className="p-6 grid grid-cols-2 gap-4">
+            <FormField label="名前" required><Input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="田中 太郎"/></FormField>
+            <FormField label="メールアドレス" required><Input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="tanaka@example.com"/></FormField>
+            <FormField label="パスワード" required><Input type="password" value={form.password} onChange={e=>setForm({...form,password:e.target.value})} placeholder="6文字以上"/></FormField>
+            <FormField label="権限"><Select value={form.role} onChange={e=>setForm({...form,role:e.target.value})}>
+              <option value="superAdmin">スーパーアドミン</option>
+              <option value="agency">代理店</option>
+              <option value="subagency">孫代理店</option>
+              <option value="tenant">テナント</option>
+            </Select></FormField>
+          </div>
+          <div className="px-6 pb-6 flex gap-3 justify-end">
+            <BtnSecondary onClick={()=>setShowAdd(false)}>キャンセル</BtnSecondary>
+            <BtnPrimary onClick={addUser} disabled={adding}>{adding?'追加中...':'追加する'}</BtnPrimary>
+          </div>
+        </Card>
+      )}
+      <Card>
+        <CardHeader title="ユーザー一覧"/>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead><tr className="bg-slate-50 border-b border-slate-200">
+              {['名前','メールアドレス','権限','登録日','操作'].map(h=><th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500">{h}</th>)}
+            </tr></thead>
+            <tbody>
+              {users.map(u=>(
+                <tr key={u.id} className="border-b border-slate-100">
+                  <td className="px-4 py-3 font-medium text-slate-700">{u.name}</td>
+                  <td className="px-4 py-3 text-slate-500">{u.email}</td>
+                  <td className="px-4 py-3"><span className={`px-2 py-1 rounded-full text-xs font-medium ${roleColors[u.role]||'bg-slate-100 text-slate-600'}`}>{roleLabels[u.role]||u.role}</span></td>
+                  <td className="px-4 py-3 text-slate-400 text-xs">{(u.createdAt||'').slice(0,10)||'-'}</td>
+                  <td className="px-4 py-3">
+                    {u.id !== (currentUser&&currentUser.uid) ? (
+                      <select value={u.role} onChange={e=>updateRole(u.id,e.target.value)}
+                        className="border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <option value="superAdmin">スーパーアドミン</option>
+                        <option value="agency">代理店</option>
+                        <option value="subagency">孫代理店</option>
+                        <option value="tenant">テナント</option>
+                      </select>
+                    ) : <span className="text-xs text-slate-400">（自分）</span>}
+                  </td>
+                </tr>
+              ))}
+              {users.length===0&&<tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">ユーザーがいません</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
 // ==================== App ====================
+const seedInitialData = async () => {
+  const batch = db.batch();
+  const seedCols = ['agencies','subagencies','tenants','contracts','invoices','products','callLogs','tokenLogs','econtracts','notices'];
+  seedCols.forEach(col => {
+    (INITIAL_DATA[col]||[]).forEach(item => {
+      batch.set(db.collection(col).doc(String(item.id)), item);
+    });
+  });
+  await batch.commit();
+};
+
 const App = () => {
+  const [authState, setAuthState] = React.useState('loading');
+  const [currentUser, setCurrentUser] = React.useState(null);
+  const [userProfile, setUserProfile] = React.useState(null);
   const [page, setPage] = React.useState('dashboard');
-  const [role, setRole] = React.useState('superAdmin');
-  const [data, setData] = React.useState(INITIAL_DATA);
+  const [data, setData] = React.useState(null);
+  const [dataLoading, setDataLoading] = React.useState(false);
   const [toasts, setToasts] = React.useState([]);
   const [modal, setModal] = React.useState(null);
+  const prevDataRef = React.useRef(null);
 
   const showToast = (message, type='success') => {
     const id = Date.now() + Math.random();
     setToasts(prev=>[...prev, {id, message, type}]);
     setTimeout(()=>setToasts(prev=>prev.filter(t=>t.id!==id)), 3500);
   };
-  const removeToast = (id) => setToasts(prev=>prev.filter(t=>t.id!==id));
+  const removeToast = id => setToasts(prev=>prev.filter(t=>t.id!==id));
 
-  const pageProps = { data, setData, setModal, showToast };
+  const loadAllData = React.useCallback(async () => {
+    setDataLoading(true);
+    const cols = ['agencies','subagencies','tenants','contracts','invoices','products','callLogs','tokenLogs','econtracts','notices','users'];
+    const result = {};
+    await Promise.all(cols.map(async col => {
+      const snap = await db.collection(col).get();
+      result[col] = snap.docs.map(d => ({...d.data(), id: d.id}));
+    }));
+    if (result.agencies.length === 0) {
+      await seedInitialData();
+      const snap2 = await db.collection('agencies').get();
+      result.agencies = snap2.docs.map(d=>({...d.data(),id:d.id}));
+    }
+    prevDataRef.current = result;
+    setData(result);
+    setDataLoading(false);
+  }, []);
+
+  const syncChanges = React.useCallback(async (prev, next) => {
+    if (!prev || !next) return;
+    const syncCols = ['agencies','subagencies','tenants','contracts','invoices','products','callLogs','tokenLogs','econtracts','notices'];
+    for (const col of syncCols) {
+      if (JSON.stringify(prev[col]) === JSON.stringify(next[col])) continue;
+      const prevItems = prev[col] || [];
+      const nextItems = next[col] || [];
+      const toUpsert = nextItems.filter(item => {
+        const p = prevItems.find(x => String(x.id) === String(item.id));
+        return !p || JSON.stringify(p) !== JSON.stringify(item);
+      });
+      const toDelete = prevItems.filter(item => !nextItems.find(x => String(x.id) === String(item.id)));
+      if (toUpsert.length === 0 && toDelete.length === 0) continue;
+      try {
+        const batch = db.batch();
+        toUpsert.forEach(item => batch.set(db.collection(col).doc(String(item.id)), item));
+        toDelete.forEach(item => batch.delete(db.collection(col).doc(String(item.id))));
+        await batch.commit();
+      } catch(e) { console.error('Sync error:', col, e); }
+    }
+  }, []);
+
+  const setDataWithSync = React.useCallback((updater) => {
+    setData(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      syncChanges(prevDataRef.current, next);
+      prevDataRef.current = next;
+      return next;
+    });
+  }, [syncChanges]);
+
+  React.useEffect(() => {
+    const unsub = auth.onAuthStateChanged(async user => {
+      if (user) {
+        setCurrentUser(user);
+        try {
+          const doc = await db.collection('users').doc(user.uid).get();
+          if (doc.exists) {
+            setUserProfile(doc.data());
+          } else {
+            const profile = { name: user.email.split('@')[0], email: user.email, role: 'superAdmin', createdAt: new Date().toISOString(), active: true };
+            await db.collection('users').doc(user.uid).set(profile);
+            setUserProfile(profile);
+          }
+        } catch(e) { console.error(e); }
+        await loadAllData();
+        setAuthState('authenticated');
+      } else {
+        setCurrentUser(null);
+        setUserProfile(null);
+        setData(null);
+        setAuthState('unauthenticated');
+      }
+    });
+    return unsub;
+  }, [loadAllData]);
+
+  if (authState === 'loading') return <LoadingScreen/>;
+  if (authState === 'unauthenticated') return <LoginPage showToast={showToast} toasts={toasts} removeToast={removeToast}/>;
+  if (dataLoading || !data) return <LoadingScreen text="データを読み込み中..."/>;
+
+  const pageProps = { data, setData: setDataWithSync, setModal, showToast };
 
   const renderPage = () => {
     switch(page) {
@@ -1629,6 +1912,7 @@ const App = () => {
       case 'notice': return <NoticePage {...pageProps}/>;
       case 'permission': return <PermissionPage {...pageProps}/>;
       case 'settings': return <SettingsPage {...pageProps}/>;
+      case 'users': return <UsersPage {...pageProps} currentUser={currentUser} loadAllData={loadAllData}/>;
       default: return <DashboardPage {...pageProps}/>;
     }
   };
@@ -1637,13 +1921,13 @@ const App = () => {
     <div className="flex h-screen bg-slate-50 text-sm overflow-hidden">
       <Sidebar page={page} setPage={setPage}/>
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header role={role} setRole={setRole} page={page}/>
+        <Header page={page} userProfile={userProfile} onLogout={()=>auth.signOut()}/>
         <main className="flex-1 overflow-y-auto p-6">
           {renderPage()}
         </main>
       </div>
       <Toast toasts={toasts} removeToast={removeToast}/>
-      {modal && <ModalRenderer modal={modal} setModal={setModal} data={data} setData={setData} showToast={showToast}/>}
+      {modal && <ModalRenderer modal={modal} setModal={setModal} data={data} setData={setDataWithSync} showToast={showToast}/>}
     </div>
   );
 };
