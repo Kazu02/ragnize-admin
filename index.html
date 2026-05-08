@@ -338,7 +338,10 @@ const ModalRenderer = ({ modal, setModal, data, setData, showToast }) => {
         </div>
         <FormField label="月額費用（円）"><Input type="number" value={form.monthlyFee} onChange={e=>setForm({...form,monthlyFee:e.target.value})}/></FormField>
         <FormField label="ステータス"><Select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option>契約中</option><option>トライアル</option><option>停止中</option></Select></FormField>
-        <div className="flex justify-end gap-3 mt-6"><BtnSecondary onClick={close}>キャンセル</BtnSecondary><BtnPrimary onClick={save}>保存</BtnPrimary></div>
+        <div className="flex justify-between mt-6">
+          {isEdit?<BtnDanger onClick={()=>{setData(prev=>({...prev,contracts:prev.contracts.filter(c=>c.id!==form.id)}));showToast('契約を削除しました','warning');close();}}>削除</BtnDanger>:<div/>}
+          <div className="flex gap-3"><BtnSecondary onClick={close}>キャンセル</BtnSecondary><BtnPrimary onClick={save}>保存</BtnPrimary></div>
+        </div>
       </Modal>
     );
   }
@@ -472,7 +475,7 @@ const ModalRenderer = ({ modal, setModal, data, setData, showToast }) => {
         </div>
         <div className="flex justify-end gap-3 mt-6">
           <BtnSecondary onClick={close}>キャンセル</BtnSecondary>
-          <BtnPrimary onClick={()=>{ showToast('権限設定を保存しました'); close(); }}>保存</BtnPrimary>
+          <BtnPrimary onClick={()=>{ if(modal.data.onSave) modal.data.onSave(perms); showToast('権限設定を保存しました'); close(); }}>保存</BtnPrimary>
         </div>
       </Modal>
     );
@@ -490,9 +493,73 @@ const ModalRenderer = ({ modal, setModal, data, setData, showToast }) => {
           ))}
           <div className="flex justify-between py-2"><span className="text-slate-500">ステータス</span>{statusBadge(inv.status)}</div>
         </div>
+        <div className="flex justify-between mt-6">
+          <div>
+            {inv.status!=='入金済'&&<BtnPrimary onClick={()=>{setData(prev=>({...prev,invoices:prev.invoices.map(i=>i.id===inv.id?{...i,status:'入金済'}:i)}));showToast('入金済みに更新しました');close();}}>入金済みにする</BtnPrimary>}
+          </div>
+          <div className="flex gap-3">
+            <BtnSecondary onClick={()=>{downloadCSV([inv],'invoice-'+inv.id+'.csv');showToast('CSV出力しました');}}>CSV出力</BtnSecondary>
+            <BtnSecondary onClick={close}>閉じる</BtnSecondary>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === 'tokenGrant') {
+    const [form, setForm] = React.useState({ tenant:'', tokens:10000, note:'' });
+    const grant = () => {
+      if (!form.tenant) { showToast('テナントを選択してください','error'); return; }
+      const tokens = Number(form.tokens);
+      const amount = tokens * 0.01;
+      const logs = data.tokenLogs;
+      const lastBalance = logs.length>0 ? logs[logs.length-1].balance : 0;
+      const item = { id:'TK'+Date.now(), tenant:form.tenant, event:'付与', tokens, unitPrice:0.01, amount, balance:lastBalance+tokens, date:new Date().toISOString().slice(0,10) };
+      setData(prev=>({...prev, tokenLogs:[...prev.tokenLogs, item]}));
+      showToast(`${fmt(tokens)}トークンを付与しました`); close();
+    };
+    return (
+      <Modal title="トークン付与" onClose={close}>
+        <FormField label="テナント" required><Select value={form.tenant} onChange={e=>setForm({...form,tenant:e.target.value})}>
+          <option value="">選択してください</option>{data.tenants.map(t=><option key={t.id}>{t.name}</option>)}
+        </Select></FormField>
+        <FormField label="付与トークン数"><Input type="number" value={form.tokens} onChange={e=>setForm({...form,tokens:e.target.value})}/></FormField>
+        <div className="bg-slate-50 rounded-lg p-3 mb-4">
+          <span className="text-sm text-slate-600">金額換算: </span>
+          <span className="font-bold text-slate-800">{fmtY(Number(form.tokens)*0.01)}</span>
+        </div>
+        <FormField label="備考"><Input value={form.note} onChange={e=>setForm({...form,note:e.target.value})} placeholder="任意"/></FormField>
+        <div className="flex justify-end gap-3 mt-6"><BtnSecondary onClick={close}>キャンセル</BtnSecondary><BtnPrimary onClick={grant}>付与する</BtnPrimary></div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === 'templatePreview') {
+    const { name } = modal.data;
+    const sampleText = `【${name}】\n\n第1条（契約の目的）\n本契約は、甲（CLASSIX株式会社）と乙（テナント）との間において、RAGNIZEサービスの利用に関する条件を定めることを目的とする。\n\n第2条（サービスの提供）\n甲は、本契約に定める条件に従い、乙に対してRAGNIZEサービスを提供する。\n\n第3条（利用料金）\n乙は、甲に対して本契約に定める利用料金を支払う。\n\n第4条（契約期間）\n本契約の有効期間は、契約開始日より1年間とする。\n\n※ このテンプレートは編集可能です。`;
+    return (
+      <Modal title={`プレビュー: ${name}`} onClose={close} size="xl">
+        <div className="bg-slate-50 rounded-lg p-4 text-sm text-slate-700 whitespace-pre-wrap font-mono leading-relaxed border border-slate-200">
+          {sampleText}
+        </div>
         <div className="flex justify-end gap-3 mt-6">
-          <BtnSecondary onClick={()=>{downloadCSV([inv],'invoice-'+inv.id+'.csv'); showToast('CSV出力しました');}}>CSV出力</BtnSecondary>
-          <BtnPrimary onClick={close}>閉じる</BtnPrimary>
+          <BtnSecondary onClick={close}>閉じる</BtnSecondary>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === 'templateEdit') {
+    const { name } = modal.data;
+    const [title, setTitle] = React.useState(name);
+    const [body, setBody] = React.useState(`第1条（契約の目的）\n本契約は、甲（CLASSIX株式会社）と乙（テナント）との間において、RAGNIZEサービスの利用に関する条件を定めることを目的とする。\n\n第2条（サービスの提供）\n甲は、本契約に定める条件に従い、乙に対してRAGNIZEサービスを提供する。`);
+    return (
+      <Modal title={`テンプレート編集: ${name}`} onClose={close} size="xl">
+        <FormField label="テンプレート名"><Input value={title} onChange={e=>setTitle(e.target.value)}/></FormField>
+        <FormField label="本文"><Textarea rows={10} value={body} onChange={e=>setBody(e.target.value)}/></FormField>
+        <div className="flex justify-end gap-3 mt-6">
+          <BtnSecondary onClick={close}>キャンセル</BtnSecondary>
+          <BtnPrimary onClick={()=>{showToast('テンプレートを保存しました');close();}}>保存</BtnPrimary>
         </div>
       </Modal>
     );
@@ -757,6 +824,8 @@ const SalesPage = ({ data, showToast }) => {
 const BillingPage = ({ data, setData, setModal, showToast }) => {
   const [tab, setTab] = React.useState('list');
   const [search, setSearch] = React.useState('');
+  const [issueMonth, setIssueMonth] = React.useState('2025-03');
+  const [issueTenant, setIssueTenant] = React.useState('all');
   const unpaid = data.invoices.filter(i=>i.status==='未入金');
   const filtered = data.invoices.filter(i=>i.tenant.includes(search)||i.id.includes(search));
 
@@ -815,7 +884,12 @@ const BillingPage = ({ data, setData, setModal, showToast }) => {
             <CardHeader title="未入金一覧"/>
             <Table
               cols={[{key:'id',label:'請求書ID'},{key:'tenant',label:'テナント'},{key:'total',label:'合計',render:v=>fmtY(v)},{key:'dueDate',label:'期日'},{key:'status',label:'状態',render:v=>statusBadge(v)},
-                {key:'_',label:'操作',render:(_,row)=><button onClick={e=>{e.stopPropagation();sendReminder(row);}} className="text-xs bg-orange-100 text-orange-700 hover:bg-orange-200 px-2 py-1 rounded">督促送信</button>}
+                {key:'_',label:'操作',render:(_,row)=>(
+                  <div className="flex gap-1">
+                    <button onClick={e=>{e.stopPropagation();sendReminder(row);}} className="text-xs bg-orange-100 text-orange-700 hover:bg-orange-200 px-2 py-1 rounded">督促送信</button>
+                    <button onClick={e=>{e.stopPropagation();setModal({type:'confirm',data:{title:'入金確認',message:`${row.tenant} (${fmtY(row.total)}) を入金済みにしますか？`,onConfirm:()=>{setData(prev=>({...prev,invoices:prev.invoices.map(i=>i.id===row.id?{...i,status:'入金済'}:i)}));showToast('入金済みに更新しました');}}});}} className="text-xs bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded">入金済み</button>
+                  </div>
+                )}
               ]}
               rows={unpaid}
             />
@@ -828,15 +902,26 @@ const BillingPage = ({ data, setData, setModal, showToast }) => {
           <div className="p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div><label className="block text-sm font-medium text-slate-700 mb-1">対象月</label>
-                <Input type="month" defaultValue="2025-03"/></div>
+                <Input type="month" value={issueMonth} onChange={e=>setIssueMonth(e.target.value)}/></div>
               <div><label className="block text-sm font-medium text-slate-700 mb-1">対象テナント</label>
-                <Select defaultValue="all"><option value="all">全テナント</option>{data.tenants.map(t=><option key={t.id}>{t.name}</option>)}</Select>
+                <Select value={issueTenant} onChange={e=>setIssueTenant(e.target.value)}><option value="all">全テナント</option>{data.tenants.map(t=><option key={t.id}>{t.name}</option>)}</Select>
               </div>
             </div>
             <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-700">
               対象テナント: {data.tenants.filter(t=>t.status==='契約中').length}社 | 推定合計: {fmtY(data.tenants.filter(t=>t.status==='契約中').reduce((s,t)=>s+t.mrr,0))}
             </div>
-            <BtnPrimary onClick={()=>showToast('請求書を一括発行しました')}>一括発行する</BtnPrimary>
+            <BtnPrimary onClick={()=>{
+  const targets = issueTenant==='all' ? data.tenants.filter(t=>t.status==='契約中') : data.tenants.filter(t=>t.name===issueTenant);
+  if(targets.length===0){showToast('対象テナントがありません','warning');return;}
+  const newInvoices = targets.map(t=>({
+    id:'INV-'+issueMonth.replace('-','')+'-'+Date.now()+'-'+t.id,
+    tenant:t.name, month:issueMonth, basicFee:t.mrr, usageFee:0, total:t.mrr,
+    dueDate:issueMonth+'-28', status:'発行済'
+  }));
+  setData(prev=>({...prev,invoices:[...prev.invoices,...newInvoices]}));
+  showToast(`${targets.length}社の請求書を発行しました`);
+  setTab('list');
+}}>一括発行する</BtnPrimary>
           </div>
         </Card>
       )}
@@ -1070,7 +1155,7 @@ const CallLogPage = ({ data, showToast }) => {
 };
 
 // ==================== Token ====================
-const TokenPage = ({ data, showToast }) => {
+const TokenPage = ({ data, setModal, showToast }) => {
   const [search, setSearch] = React.useState('');
   const filtered = data.tokenLogs.filter(t=>t.tenant.includes(search)||t.event.includes(search));
   return (
@@ -1083,7 +1168,7 @@ const TokenPage = ({ data, showToast }) => {
       </div>
       <Card>
         <CardHeader title="トークン残高推移">
-          <BtnSecondary onClick={()=>showToast('トークン付与機能は別途管理画面から行えます','info')}>トークン付与</BtnSecondary>
+          <BtnPrimary onClick={()=>setModal({type:'tokenGrant',data:{}})}>+トークン付与</BtnPrimary>
         </CardHeader>
         <div className="p-4">
           <ResponsiveContainer width="100%" height={200}>
@@ -1238,8 +1323,8 @@ const EContractPage = ({ data, setData, setModal, showToast }) => {
                   <div className="text-sm font-medium text-slate-700">{name}</div>
                   <div className="text-xs text-slate-400 mt-1">最終更新: 2025-02-01</div>
                   <div className="flex gap-2 mt-3">
-                    <button className="text-xs text-blue-600 hover:underline">編集</button>
-                    <button className="text-xs text-slate-400 hover:underline">プレビュー</button>
+                    <button onClick={()=>setModal({type:'templateEdit',data:{name}})} className="text-xs text-blue-600 hover:underline">編集</button>
+                    <button onClick={()=>setModal({type:'templatePreview',data:{name}})} className="text-xs text-slate-400 hover:underline">プレビュー</button>
                   </div>
                 </div>
               ))}
@@ -1313,23 +1398,29 @@ const subPerms = { 'ダッシュボード閲覧':true,'売上管理閲覧':false
 const tenantPerms = { 'ダッシュボード閲覧':true,'売上管理閲覧':false,'請求管理閲覧':true,'代理店管理':false,'テナント管理':false,'契約管理':false,'製品管理':false,'課金設定変更':false,'レポート出力':false,'権限管理':false,'システム設定':false };
 
 const PermissionPage = ({ setModal, showToast }) => {
-  const roles = [
-    { name:'スーパーアドミン', color:'bg-blue-100 text-blue-700', perms: defaultPerms },
-    { name:'代理店', color:'bg-green-100 text-green-700', perms: agencyPerms },
-    { name:'孫代理店', color:'bg-orange-100 text-orange-700', perms: subPerms },
-    { name:'テナント', color:'bg-purple-100 text-purple-700', perms: tenantPerms },
-  ];
+  const roleColors = {
+    'スーパーアドミン':'bg-blue-100 text-blue-700',
+    '代理店':'bg-green-100 text-green-700',
+    '孫代理店':'bg-orange-100 text-orange-700',
+    'テナント':'bg-purple-100 text-purple-700',
+  };
+  const [rolePerms, setRolePerms] = React.useState({
+    'スーパーアドミン':{...defaultPerms},
+    '代理店':{...agencyPerms},
+    '孫代理店':{...subPerms},
+    'テナント':{...tenantPerms},
+  });
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-6">
-        {roles.map(r=>(
-          <Card key={r.name}>
-            <CardHeader title={<span className={`px-2 py-1 rounded-full text-xs font-medium ${r.color}`}>{r.name}</span>}>
-              <button onClick={()=>setModal({type:'permissionEdit',data:{role:r.name,permissions:{...r.perms}}})}
+        {Object.entries(rolePerms).map(([name,perms])=>(
+          <Card key={name}>
+            <CardHeader title={<span className={`px-2 py-1 rounded-full text-xs font-medium ${roleColors[name]}`}>{name}</span>}>
+              <button onClick={()=>setModal({type:'permissionEdit',data:{role:name,permissions:{...perms},onSave:(newPerms)=>setRolePerms(prev=>({...prev,[name]:newPerms}))}})}
                 className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg">権限編集</button>
             </CardHeader>
             <div className="p-4 space-y-2">
-              {Object.entries(r.perms).map(([key,val])=>(
+              {Object.entries(perms).map(([key,val])=>(
                 <div key={key} className="flex items-center justify-between py-1">
                   <span className="text-sm text-slate-600">{key}</span>
                   <span className={`text-xs font-medium ${val?'text-green-600':'text-slate-400'}`}>{val?'✓ 許可':'✗ 禁止'}</span>
