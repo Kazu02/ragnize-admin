@@ -61,6 +61,7 @@ const MENU_ITEMS = [
   { id: 'permission', icon: '⊛', label: '権限管理' },
   { id: 'settings', icon: '⚙', label: 'システム設定' },
   { id: 'users', icon: '◈', label: 'ユーザー管理' },
+  { id: 'auditlog', icon: '◷', label: '操作ログ' },
 ];
 
 const INITIAL_DATA = {
@@ -978,6 +979,159 @@ const ModalRenderer = ({ modal, setModal, data, setData, showToast }) => {
     );
   }
 
+  if (modal.type === 'agencyCommission') {
+    const agency = modal.data;
+    const agencyTenants = data.tenants.filter(t=>t.agency===agency.name);
+    const totalMRR = agencyTenants.reduce((s,t)=>s+(t.mrr||0),0);
+    return (
+      <Modal title={`コミッション明細: ${agency.name}`} onClose={close} size="xl">
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="bg-blue-50 rounded-lg p-4 text-center">
+            <p className="text-xs text-blue-500 mb-1">担当テナント</p>
+            <p className="text-2xl font-bold text-blue-700">{agencyTenants.length}社</p>
+          </div>
+          <div className="bg-green-50 rounded-lg p-4 text-center">
+            <p className="text-xs text-green-500 mb-1">担当MRR合計</p>
+            <p className="text-2xl font-bold text-green-700">{fmtY(totalMRR)}</p>
+          </div>
+          <div className="bg-orange-50 rounded-lg p-4 text-center">
+            <p className="text-xs text-orange-500 mb-1">当月コミッション（登録値）</p>
+            <p className="text-2xl font-bold text-orange-700">{fmtY(agency.commission||0)}</p>
+          </div>
+        </div>
+        <div className="mb-2 text-xs text-slate-500 font-medium uppercase tracking-wide">テナント別内訳</div>
+        <div className="border border-slate-200 rounded-lg overflow-hidden mb-4">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="text-left px-4 py-2 text-xs text-slate-500 font-medium">テナント</th>
+                <th className="text-left px-4 py-2 text-xs text-slate-500 font-medium">製品</th>
+                <th className="text-right px-4 py-2 text-xs text-slate-500 font-medium">MRR</th>
+                <th className="text-right px-4 py-2 text-xs text-slate-500 font-medium">状態</th>
+              </tr>
+            </thead>
+            <tbody>
+              {agencyTenants.map((t,i)=>(
+                <tr key={i} className="border-t border-slate-100">
+                  <td className="px-4 py-2 font-medium">{t.name}</td>
+                  <td className="px-4 py-2 text-slate-500 text-xs">{(t.products||[]).join(', ')}</td>
+                  <td className="px-4 py-2 text-right">{fmtY(t.mrr)}</td>
+                  <td className="px-4 py-2 text-right">{statusBadge(t.status)}</td>
+                </tr>
+              ))}
+              {agencyTenants.length===0 && <tr><td colSpan="4" className="px-4 py-8 text-center text-slate-400">担当テナントがありません</td></tr>}
+              {agencyTenants.length>0 && (
+                <tr className="bg-blue-50 border-t-2 border-blue-200">
+                  <td colSpan="2" className="px-4 py-2 font-bold text-blue-700">合計</td>
+                  <td className="px-4 py-2 text-right font-bold text-blue-700">{fmtY(totalMRR)}</td>
+                  <td></td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex justify-end">
+          <BtnSecondary onClick={close}>閉じる</BtnSecondary>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === 'csvImport') {
+    const { target } = modal.data;
+    const [rows, setRows] = React.useState([]);
+    const [parseError, setParseError] = React.useState('');
+    const [step, setStep] = React.useState('upload');
+    const templateCols = target==='agencies'
+      ? ['name','code','status','startDate']
+      : ['name','agency','mrr','startDate','status'];
+    const parseCSV = (text) => {
+      if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
+      const lines = text.trim().split(/\r?\n/);
+      if(lines.length<2){setParseError('データ行がありません');return;}
+      const headers = lines[0].split(',').map(h=>h.replace(/^"|"$/g,'').trim());
+      const parsed = lines.slice(1).map(line=>{
+        const vals = line.split(',').map(v=>v.replace(/^"|"$/g,'').trim());
+        const obj={};headers.forEach((h,i)=>obj[h]=vals[i]||'');return obj;
+      }).filter(r=>Object.values(r).some(v=>v!==''));
+      if(parsed.length===0){setParseError('有効なデータ行がありません');return;}
+      setRows(parsed);setStep('preview');setParseError('');
+    };
+    const handleFile = (e)=>{
+      const file=e.target.files[0];if(!file)return;
+      const reader=new FileReader();
+      reader.onload=ev=>{parseCSV(ev.target.result);};
+      reader.readAsText(file,'UTF-8');
+    };
+    const downloadTemplate = ()=>{
+      const csv='﻿'+templateCols.join(',')+'\n'+templateCols.map(()=>'').join(',');
+      const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');a.href=url;a.download=`${target}-template.csv`;a.click();
+      URL.revokeObjectURL(url);
+    };
+    const importData = ()=>{
+      if(rows.length===0)return;
+      if(target==='agencies'){
+        const newItems=rows.map(r=>({...r,id:'AG'+Date.now()+Math.random().toString(36).slice(2,5),subCount:0,tenantCount:0,mrr:Number(r.mrr)||0,commission:Number(r.commission)||0,status:r.status||'有効'}));
+        setData(prev=>({...prev,agencies:[...prev.agencies,...newItems]}));
+      } else {
+        const newItems=rows.map(r=>({...r,id:'TN'+Date.now()+Math.random().toString(36).slice(2,5),mrr:Number(r.mrr)||0,products:r.products?r.products.split('|').map(p=>p.trim()):[],status:r.status||'契約中'}));
+        setData(prev=>({...prev,tenants:[...prev.tenants,...newItems]}));
+      }
+      showToast(`${rows.length}件をインポートしました`);close();
+    };
+    return (
+      <Modal title={`CSVインポート（${target==='agencies'?'代理店':'テナント'}一括登録）`} onClose={close} size="xl">
+        {step==='upload'?(
+          <>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 text-sm">
+              <p className="font-medium text-blue-700 mb-1">CSVフォーマット</p>
+              <p className="text-blue-600 text-xs">必須列（1行目ヘッダー）: {templateCols.join(', ')}</p>
+              {target==='tenants'&&<p className="text-blue-500 text-xs mt-1">※ productsは「|」区切りで複数指定可</p>}
+            </div>
+            <div className="border-2 border-dashed border-slate-300 hover:border-blue-400 rounded-xl p-10 text-center mb-4 transition-colors">
+              <p className="text-slate-400 text-sm mb-3">CSVファイルをアップロード</p>
+              <input type="file" accept=".csv" onChange={handleFile} className="text-sm text-slate-600"/>
+            </div>
+            {parseError&&<p className="text-red-500 text-sm mb-3">{parseError}</p>}
+            <div className="flex justify-between">
+              <BtnSecondary onClick={downloadTemplate}>テンプレートDL</BtnSecondary>
+              <BtnSecondary onClick={close}>キャンセル</BtnSecondary>
+            </div>
+          </>
+        ):(
+          <>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700 mb-4 flex items-center gap-2">
+              <span>✓</span><span>{rows.length}件のデータを検出。内容を確認してください。</span>
+            </div>
+            <div className="overflow-auto max-h-56 border border-slate-200 rounded-lg mb-4">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-50 sticky top-0">
+                  <tr>{Object.keys(rows[0]||{}).map(h=><th key={h} className="px-3 py-2 text-left border-b border-slate-200 font-medium text-slate-600 whitespace-nowrap">{h}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {rows.map((r,i)=>(
+                    <tr key={i} className={i%2===0?'bg-white':'bg-slate-50'}>
+                      {Object.values(r).map((v,j)=><td key={j} className="px-3 py-1.5 border-b border-slate-100 whitespace-nowrap">{v}</td>)}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-between">
+              <BtnSecondary onClick={()=>setStep('upload')}>戻る</BtnSecondary>
+              <div className="flex gap-3">
+                <BtnSecondary onClick={close}>キャンセル</BtnSecondary>
+                <BtnPrimary onClick={importData}>インポート実行 ({rows.length}件)</BtnPrimary>
+              </div>
+            </div>
+          </>
+        )}
+      </Modal>
+    );
+  }
+
   return null;
 };
 
@@ -1083,75 +1237,116 @@ const CardHeader = ({ title, children }) => (
 );
 
 // ==================== Dashboard ====================
-const mrrData = [
-  {month:'10月',mrr:42},{month:'11月',mrr:46},{month:'12月',mrr:50},{month:'1月',mrr:55},{month:'2月',mrr:59},{month:'3月',mrr:62.5}
-];
-const pieData = [
-  {name:'ナツメAI',value:35},{name:'架電AI',value:28},{name:'受電AI',value:18},{name:'面接',value:10},{name:'マドモアゼル',value:6},{name:'その他',value:3}
-];
 const PIE_COLORS = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#94a3b8'];
 
-const DashboardPage = ({ data }) => (
-  <div className="space-y-6">
-    <div className="grid grid-cols-4 gap-4">
-      <KPICard title="当月MRR" value="¥6,250万" sub="+5.9% 前月比" color="blue" icon="¥"/>
-      <KPICard title="累計売上" value="¥3.1億" sub="2024年4月〜" color="green" icon="↑"/>
-      <KPICard title="契約テナント数" value="42社" sub="+2社 前月比" color="purple" icon="◉"/>
-      <KPICard title="未入金合計" value="¥245万" sub="2件未入金" color="red" icon="!"/>
-    </div>
-    <div className="grid grid-cols-4 gap-4">
-      <KPICard title="代理店数" value="12社" color="blue" icon="◈"/>
-      <KPICard title="新規契約" value="7件" sub="当月" color="green" icon="✓"/>
-      <KPICard title="解約" value="2件" sub="当月" color="orange" icon="✗"/>
-      <KPICard title="通話時間" value="8,240分" sub="当月合計" color="purple" icon="○"/>
-    </div>
-    <div className="grid grid-cols-2 gap-6">
-      <Card>
-        <CardHeader title="MRR推移（百万円）"/>
-        <div className="p-4">
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={mrrData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9"/>
-              <XAxis dataKey="month" tick={{fontSize:12}}/>
-              <YAxis tick={{fontSize:12}} domain={[30,70]}/>
-              <Tooltip formatter={(v)=>`¥${v}M`}/>
-              <Line type="monotone" dataKey="mrr" stroke="#3b82f6" strokeWidth={2} dot={{r:4}}/>
-            </LineChart>
-          </ResponsiveContainer>
+const DashboardPage = ({ data, setPage }) => {
+  const activeTenants = data.tenants.filter(t=>t.status==='契約中');
+  const totalMRR = activeTenants.reduce((s,t)=>s+(t.mrr||0),0);
+  const unpaidInvoices = data.invoices.filter(i=>i.status==='未入金');
+  const unpaidTotal = unpaidInvoices.reduce((s,i)=>s+i.total,0);
+  const activeAgencies = data.agencies.filter(a=>a.status==='有効');
+  const activeContracts = data.contracts.filter(c=>c.status==='契約中');
+  const callMinutes = data.callLogs.reduce((s,c)=>s+Math.floor((c.seconds||0)/60),0);
+  const today = new Date();
+  const thirtyDays = new Date(today.getTime()+30*24*60*60*1000);
+  const expiringContracts = data.contracts.filter(c=>{
+    if(!c.endDate||c.status!=='契約中') return false;
+    const end = new Date(c.endDate);
+    return end>=today && end<=thirtyDays;
+  });
+  const productMRR = {};
+  data.tenants.forEach(t=>(t.products||[]).forEach(p=>{productMRR[p]=(productMRR[p]||0)+(t.mrr||0);}));
+  const pieData = Object.entries(productMRR).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value).slice(0,6);
+  const totalPieMRR = pieData.reduce((s,p)=>s+p.value,0)||1;
+
+  return (
+    <div className="space-y-6">
+      {expiringContracts.length>0 && (
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start gap-3">
+          <span className="text-orange-500 text-xl mt-0.5">⚠</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-orange-700">契約更新アラート: {expiringContracts.length}件が30日以内に期限切れ</p>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {expiringContracts.map(c=>(
+                <span key={c.id} className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
+                  {c.tenant}（{c.endDate}）
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
-      </Card>
-      <Card>
-        <CardHeader title="製品別売上構成"/>
-        <div className="p-4">
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({name,value})=>`${name} ${value}%`} labelLine={false} fontSize={11}>
-                {pieData.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}
-              </Pie>
-              <Tooltip formatter={(v)=>`${v}%`}/>
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
+      )}
+      <div className="grid grid-cols-4 gap-4">
+        <KPICard title="当月MRR合計" value={fmtY(totalMRR)} sub={`契約テナント ${activeTenants.length}社`} color="blue" icon="¥"/>
+        <KPICard title="有効代理店数" value={`${activeAgencies.length}社`} sub={`孫代理店 ${data.subagencies.filter(s=>s.status==='有効').length}社`} color="green" icon="◈"/>
+        <KPICard title="有効契約件数" value={`${activeContracts.length}件`} sub={`全${data.contracts.length}件中`} color="purple" icon="◉"/>
+        <KPICard title="未入金合計" value={fmtY(unpaidTotal)} sub={`${unpaidInvoices.length}件未入金`} color={unpaidInvoices.length>0?'red':'green'} icon={unpaidInvoices.length>0?'!':'✓'}/>
+      </div>
+      <div className="grid grid-cols-4 gap-4">
+        <KPICard title="見積送付済以上" value={`${(data.quotes||[]).filter(q=>q.status!=='下書き'&&q.status!=='失注').length}件`} color="blue" icon="≡"/>
+        <KPICard title="受注金額（税込）" value={fmtY((data.quotes||[]).filter(q=>q.status==='承認済'||q.status==='受注').reduce((s,q)=>s+q.total,0))} color="green" icon="✓"/>
+        <KPICard title="更新期限アラート" value={`${expiringContracts.length}件`} sub="30日以内" color={expiringContracts.length>0?'red':'green'} icon={expiringContracts.length>0?'!':'✓'}/>
+        <KPICard title="通話時間合計" value={`${fmt(callMinutes)}分`} sub="ログ集計" color="purple" icon="○"/>
+      </div>
+      <div className="grid grid-cols-2 gap-6">
+        <Card>
+          <CardHeader title="製品別MRR構成"/>
+          <div className="p-4">
+            {pieData.length>0 ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value"
+                    label={({name,value})=>`${name} ${Math.round(value/totalPieMRR*100)}%`} labelLine={false} fontSize={10}>
+                    {pieData.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}
+                  </Pie>
+                  <Tooltip formatter={(v)=>fmtY(v)}/>
+                </PieChart>
+              </ResponsiveContainer>
+            ) : <p className="text-slate-400 text-center py-16 text-sm">製品データなし</p>}
+          </div>
+        </Card>
+        <Card>
+          <CardHeader title="代理店別MRR"/>
+          <div className="p-4 space-y-3">
+            {data.agencies.filter(a=>a.status==='有効').sort((a,b)=>b.mrr-a.mrr).slice(0,5).map((a,i)=>{
+              const pct = totalMRR>0 ? Math.round(a.mrr/totalMRR*100) : 0;
+              return (
+                <div key={a.id} className="flex items-center gap-3">
+                  <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center flex-shrink-0">{i+1}</span>
+                  <div className="flex-1">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="font-medium text-slate-700 truncate">{a.name}</span>
+                      <span className="text-slate-500 ml-2">{fmtY(a.mrr)}</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full"><div className="h-1.5 bg-blue-500 rounded-full" style={{width:`${pct}%`}}></div></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </div>
+      <div className="grid grid-cols-2 gap-6">
+        <Card>
+          <CardHeader title="最新契約"/>
+          <Table
+            cols={[{key:'id',label:'契約ID'},{key:'tenant',label:'テナント'},{key:'product',label:'製品'},{key:'monthlyFee',label:'月額',render:v=>fmtY(v)},{key:'status',label:'状態',render:v=>statusBadge(v)}]}
+            rows={data.contracts.slice(0,5)}
+          />
+        </Card>
+        <Card>
+          <CardHeader title="未入金・請求状況">
+            <span className="text-xs text-slate-400">{data.invoices.length}件</span>
+          </CardHeader>
+          <Table
+            cols={[{key:'id',label:'請求ID'},{key:'tenant',label:'テナント'},{key:'total',label:'合計',render:v=>fmtY(v)},{key:'dueDate',label:'期日'},{key:'status',label:'状態',render:v=>statusBadge(v)}]}
+            rows={data.invoices.slice(0,5)}
+          />
+        </Card>
+      </div>
     </div>
-    <div className="grid grid-cols-2 gap-6">
-      <Card>
-        <CardHeader title="最新契約"/>
-        <Table
-          cols={[{key:'id',label:'契約ID'},{key:'tenant',label:'テナント'},{key:'product',label:'製品'},{key:'monthlyFee',label:'月額',render:v=>fmtY(v)},{key:'status',label:'状態',render:v=>statusBadge(v)}]}
-          rows={data.contracts.slice(0,5)}
-        />
-      </Card>
-      <Card>
-        <CardHeader title="請求状況"/>
-        <Table
-          cols={[{key:'id',label:'請求ID'},{key:'tenant',label:'テナント'},{key:'total',label:'合計',render:v=>fmtY(v)},{key:'status',label:'状態',render:v=>statusBadge(v)}]}
-          rows={data.invoices}
-        />
-      </Card>
-    </div>
-  </div>
-);
+  );
+};
 
 // ==================== Sales ====================
 const salesBarData = [
@@ -1339,6 +1534,79 @@ const BillingPage = ({ data, setData, setModal, showToast }) => {
   );
 };
 
+// ==================== AuditLog ====================
+const AuditLogPage = ({ showToast }) => {
+  const [logs, setLogs] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [search, setSearch] = React.useState('');
+  const [actionFilter, setActionFilter] = React.useState('all');
+
+  React.useEffect(()=>{
+    const fetch = async () => {
+      try {
+        let snap;
+        try {
+          snap = await db.collection('auditLogs').orderBy('timestamp','desc').limit(300).get();
+        } catch {
+          snap = await db.collection('auditLogs').limit(300).get();
+        }
+        const docs = snap.docs.map(d=>({...d.data(),id:d.id}));
+        docs.sort((a,b)=>b.timestamp>a.timestamp?1:-1);
+        setLogs(docs);
+      } catch(e){ console.error(e); }
+      setLoading(false);
+    };
+    fetch();
+  },[]);
+
+  const filtered = logs.filter(l=>
+    (actionFilter==='all'||l.action===actionFilter) &&
+    (!search||(l.user||'').includes(search)||(l.targetName||'').includes(search)||(l.category||'').includes(search))
+  );
+
+  const actionBadge = (action) => {
+    const cls = action==='作成'?'bg-green-100 text-green-700':action==='削除'?'bg-red-100 text-red-700':'bg-blue-100 text-blue-700';
+    return <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>{action}</span>;
+  };
+
+  if(loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <div className="flex gap-2 items-center">
+          <SearchBar value={search} onChange={setSearch} placeholder="ユーザー・対象・カテゴリ"/>
+          <select value={actionFilter} onChange={e=>setActionFilter(e.target.value)}
+            className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="all">全操作</option><option>作成</option><option>更新</option><option>削除</option>
+          </select>
+        </div>
+        <BtnSecondary onClick={()=>{downloadCSV(filtered,'audit-log.csv');showToast('CSV出力しました');}}>CSV出力</BtnSecondary>
+      </div>
+      <Card>
+        <CardHeader title="操作ログ（最新300件）">
+          <span className="text-xs text-slate-400">{filtered.length}件表示</span>
+        </CardHeader>
+        {filtered.length===0&&logs.length===0?(
+          <p className="text-slate-400 text-center py-12 text-sm">まだ操作ログがありません。データを更新すると記録されます。</p>
+        ):(
+          <Table
+            cols={[
+              {key:'timestamp',label:'日時',render:v=>v?new Date(v).toLocaleString('ja-JP',{year:'2-digit',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):''},
+              {key:'user',label:'操作者'},
+              {key:'action',label:'操作',render:v=>actionBadge(v)},
+              {key:'category',label:'カテゴリ'},
+              {key:'targetName',label:'対象'},
+              {key:'targetId',label:'対象ID'},
+            ]}
+            rows={filtered}
+          />
+        )}
+      </Card>
+    </div>
+  );
+};
+
 // ==================== Quote ====================
 const QuotePage = ({ data, setData, setModal, showToast }) => {
   const [search, setSearch] = React.useState('');
@@ -1404,12 +1672,13 @@ const AgencyPage = ({ data, setData, setModal, showToast }) => {
         <SearchBar value={search} onChange={setSearch} placeholder="代理店名・コード"/>
         <div className="flex gap-3">
           <BtnSecondary onClick={()=>{downloadCSV(data.agencies,'agencies.csv');showToast('CSV出力しました');}}>CSV出力</BtnSecondary>
+          <BtnSecondary onClick={()=>setModal({type:'csvImport',data:{target:'agencies'}})}>CSV一括登録</BtnSecondary>
           <BtnPrimary onClick={()=>setModal({type:'agencyNew',data:{}})}>+代理店登録</BtnPrimary>
         </div>
       </div>
       <Card>
         <Table
-          cols={[{key:'id',label:'ID'},{key:'name',label:'代理店名'},{key:'code',label:'コード'},{key:'subCount',label:'孫代理店'},{key:'tenantCount',label:'テナント数'},{key:'mrr',label:'MRR',render:v=>fmtY(v)},{key:'commission',label:'手数料',render:v=>fmtY(v)},{key:'status',label:'状態',render:v=>statusBadge(v)},{key:'startDate',label:'開始日'}]}
+          cols={[{key:'id',label:'ID'},{key:'name',label:'代理店名'},{key:'code',label:'コード'},{key:'subCount',label:'孫代理店'},{key:'tenantCount',label:'テナント数'},{key:'mrr',label:'MRR',render:v=>fmtY(v)},{key:'commission',label:'手数料',render:v=>fmtY(v)},{key:'status',label:'状態',render:v=>statusBadge(v)},{key:'startDate',label:'開始日'},{key:'_act',label:'',render:(_,row)=><button onClick={e=>{e.stopPropagation();setModal({type:'agencyCommission',data:row});}} className="text-xs bg-purple-50 text-purple-700 hover:bg-purple-100 px-2 py-1 rounded whitespace-nowrap">明細</button>}]}
           rows={filtered}
           onRowClick={row=>setModal({type:'agencyEdit',data:{...row}})}
         />
@@ -1452,6 +1721,7 @@ const TenantPage = ({ data, setData, setModal, showToast }) => {
         <SearchBar value={search} onChange={setSearch} placeholder="テナント名・代理店"/>
         <div className="flex gap-3">
           <BtnSecondary onClick={()=>{downloadCSV(data.tenants,'tenants.csv');showToast('CSV出力しました');}}>CSV出力</BtnSecondary>
+          <BtnSecondary onClick={()=>setModal({type:'csvImport',data:{target:'tenants'}})}>CSV一括登録</BtnSecondary>
           <BtnPrimary onClick={()=>setModal({type:'tenantNew',data:{}})}>+テナント登録</BtnPrimary>
         </div>
       </div>
@@ -2150,9 +2420,11 @@ const App = () => {
     setDataLoading(false);
   }, []);
 
-  const syncChanges = React.useCallback(async (prev, next) => {
+  const syncChanges = React.useCallback(async (prev, next, userEmail) => {
     if (!prev || !next) return;
     const syncCols = ['agencies','subagencies','tenants','contracts','invoices','quotes','products','callLogs','tokenLogs','econtracts','notices'];
+    const colLabels = {agencies:'代理店',subagencies:'孫代理店',tenants:'テナント',contracts:'契約',invoices:'請求書',quotes:'見積書',products:'製品',callLogs:'通話ログ',tokenLogs:'トークンログ',econtracts:'電子契約',notices:'お知らせ'};
+    const auditEntries = [];
     for (const col of syncCols) {
       if (JSON.stringify(prev[col]) === JSON.stringify(next[col])) continue;
       const prevItems = prev[col] || [];
@@ -2162,6 +2434,13 @@ const App = () => {
         return !p || JSON.stringify(p) !== JSON.stringify(item);
       });
       const toDelete = prevItems.filter(item => !nextItems.find(x => String(x.id) === String(item.id)));
+      toUpsert.forEach(item => {
+        const isNew = !prevItems.find(x => String(x.id) === String(item.id));
+        auditEntries.push({ id:'AL'+Date.now()+'_'+Math.random().toString(36).slice(2,5), user:userEmail||'不明', action:isNew?'作成':'更新', category:colLabels[col]||col, targetId:String(item.id), targetName:item.name||item.tenant||item.title||String(item.id), timestamp:new Date().toISOString() });
+      });
+      toDelete.forEach(item => {
+        auditEntries.push({ id:'AL'+Date.now()+'_'+Math.random().toString(36).slice(2,5), user:userEmail||'不明', action:'削除', category:colLabels[col]||col, targetId:String(item.id), targetName:item.name||item.tenant||item.title||String(item.id), timestamp:new Date().toISOString() });
+      });
       if (toUpsert.length === 0 && toDelete.length === 0) continue;
       try {
         const batch = db.batch();
@@ -2170,16 +2449,23 @@ const App = () => {
         await batch.commit();
       } catch(e) { console.error('Sync error:', col, e); }
     }
+    if (auditEntries.length > 0) {
+      try {
+        const batch = db.batch();
+        auditEntries.forEach(entry => batch.set(db.collection('auditLogs').doc(entry.id), entry));
+        await batch.commit();
+      } catch(e) { console.error('Audit log error:', e); }
+    }
   }, []);
 
   const setDataWithSync = React.useCallback((updater) => {
     setData(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
-      syncChanges(prevDataRef.current, next);
+      syncChanges(prevDataRef.current, next, currentUser?.email);
       prevDataRef.current = next;
       return next;
     });
-  }, [syncChanges]);
+  }, [syncChanges, currentUser]);
 
   React.useEffect(() => {
     const unsub = auth.onAuthStateChanged(async user => {
@@ -2233,6 +2519,7 @@ const App = () => {
       case 'permission': return <PermissionPage {...pageProps}/>;
       case 'settings': return <SettingsPage {...pageProps}/>;
       case 'users': return <UsersPage {...pageProps} currentUser={currentUser} loadAllData={loadAllData}/>;
+      case 'auditlog': return <AuditLogPage showToast={showToast}/>;
       default: return <DashboardPage {...pageProps}/>;
     }
   };
