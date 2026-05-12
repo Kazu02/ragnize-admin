@@ -46,6 +46,7 @@ const MENU_ITEMS = [
   { id: 'dashboard', icon: '⊞', label: 'ダッシュボード' },
   { id: 'sales', icon: '¥', label: '売上管理' },
   { id: 'billing', icon: '≡', label: '請求管理' },
+  { id: 'quote', icon: '✎', label: '見積管理' },
   { id: 'agency', icon: '◈', label: '代理店管理' },
   { id: 'subagency', icon: '◇', label: '孫代理店管理' },
   { id: 'tenant', icon: '◉', label: 'テナント管理' },
@@ -141,6 +142,11 @@ const INITIAL_DATA = {
     { id:'NT004', title:'架電AI 価格改定のご案内（2025年5月〜）', target:'全ユーザー', publishDate:'2025-04-01', endDate:'2025-05-31', status:'下書き', body:'' },
     { id:'NT005', title:'代理店向け Q1 実績レポート配信', target:'代理店のみ', publishDate:'2025-03-10', endDate:'2025-04-10', status:'公開中', body:'' },
   ],
+  quotes: [
+    { id:'QT-202503-001', issueDate:'2025-03-10', validUntil:'2025-04-10', tenant:'㈱山田製作所', agency:'テクノソリューション', items:[{name:'ナツメAI 月額基本料金',qty:1,unitPrice:50000,amount:50000},{name:'初期設定費用',qty:1,unitPrice:100000,amount:100000}], subtotal:150000, tax:15000, total:165000, status:'承認済', notes:'' },
+    { id:'QT-202503-002', issueDate:'2025-03-14', validUntil:'2025-04-14', tenant:'大阪商事㈱', agency:'スマートビジネス', items:[{name:'受電AI 月額基本料金',qty:1,unitPrice:35000,amount:35000},{name:'初期設定費用',qty:1,unitPrice:70000,amount:70000}], subtotal:105000, tax:10500, total:115500, status:'送付済', notes:'' },
+    { id:'QT-202503-003', issueDate:'2025-03-18', validUntil:'2025-04-18', tenant:'東京技研㈱', agency:'直販', items:[{name:'RAGNIZE for 面接 月額料金',qty:1,unitPrice:45000,amount:45000}], subtotal:45000, tax:4500, total:49500, status:'下書き', notes:'トライアル終了後の本契約見積' },
+  ],
 };
 
 // ==================== Utility ====================
@@ -206,6 +212,77 @@ const printInvoice = (inv) => {
   w.document.close();
 };
 
+const printQuote = (q) => {
+  const w = window.open('', '_blank', 'width=820,height=720');
+  const itemRows = (q.items||[]).map(item =>
+    `<tr><td>${item.name}</td><td style="text-align:right">${item.qty}</td><td style="text-align:right">¥${Number(item.unitPrice).toLocaleString()}</td><td style="text-align:right">¥${Number(item.amount).toLocaleString()}</td></tr>`
+  ).join('');
+  w.document.write(`<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><title>見積書 ${q.id}</title>
+<style>
+  *{box-sizing:border-box;}
+  body{font-family:'Segoe UI',sans-serif;margin:48px;color:#1e293b;background:#fff;}
+  .hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px;padding-bottom:20px;border-bottom:2px solid #2563eb;}
+  .brand{font-size:26px;font-weight:800;color:#2563eb;letter-spacing:.05em;}
+  .brand-sub{font-size:12px;color:#64748b;margin-top:3px;}
+  .doc-title{font-size:30px;font-weight:700;text-align:right;}
+  .doc-id{font-size:13px;color:#64748b;text-align:right;margin-top:3px;}
+  .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;background:#dbeafe;color:#1d4ed8;margin-top:6px;}
+  .cols{display:flex;gap:20px;margin-bottom:28px;}
+  .box{flex:1;border:1px solid #e2e8f0;border-radius:8px;padding:14px;}
+  .box-label{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;}
+  .name{font-size:17px;font-weight:700;}
+  .agency-note{font-size:12px;color:#64748b;margin-top:4px;}
+  .meta-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;}
+  .meta-key{color:#64748b;}
+  table{width:100%;border-collapse:collapse;margin-bottom:16px;}
+  thead th{background:#f8fafc;text-align:left;padding:10px 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid #e2e8f0;}
+  tbody td{padding:12px 14px;border-bottom:1px solid #f1f5f9;font-size:14px;}
+  .sub-row td{background:#f8fafc;font-weight:600;font-size:13px;}
+  .total-row td{background:#eff6ff;font-size:15px;font-weight:700;color:#2563eb;}
+  .note-box{background:#fefce8;border:1px solid #fef08a;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#854d0e;}
+  .footer{font-size:11px;color:#94a3b8;text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;}
+  .btns{text-align:center;margin-top:24px;}
+  .btn-print{background:#2563eb;color:#fff;border:none;padding:10px 28px;border-radius:8px;font-size:14px;cursor:pointer;margin-right:8px;}
+  .btn-close{background:#f1f5f9;color:#334155;border:none;padding:10px 20px;border-radius:8px;font-size:14px;cursor:pointer;}
+  @media print{.btns{display:none;}body{margin:20px;}}
+</style></head><body>
+<div class="hd">
+  <div><div class="brand">RAGNIZE</div><div class="brand-sub">CLASSIX株式会社</div></div>
+  <div><div class="doc-title">見 積 書</div><div class="doc-id">${q.id}</div><div><span class="badge">${q.status}</span></div></div>
+</div>
+<div class="cols">
+  <div class="box" style="flex:1.4">
+    <div class="box-label">見積先</div>
+    <div class="name">${q.tenant} 御中</div>
+    ${q.agency&&q.agency!=='直販'?`<div class="agency-note">代理店: ${q.agency}</div>`:''}
+  </div>
+  <div class="box" style="flex:1">
+    <div class="box-label">見積情報</div>
+    <div class="meta-row"><span class="meta-key">見積書番号</span><span>${q.id}</span></div>
+    <div class="meta-row"><span class="meta-key">発行日</span><span>${q.issueDate}</span></div>
+    <div class="meta-row"><span class="meta-key">有効期限</span><span>${q.validUntil}</span></div>
+  </div>
+</div>
+<table>
+  <thead><tr><th>品目・サービス名</th><th style="text-align:right">数量</th><th style="text-align:right">単価（円）</th><th style="text-align:right">金額（円）</th></tr></thead>
+  <tbody>
+    ${itemRows}
+    <tr class="sub-row"><td colspan="3" style="text-align:right">小計</td><td style="text-align:right">¥${Number(q.subtotal).toLocaleString()}</td></tr>
+    <tr class="sub-row"><td colspan="3" style="text-align:right">消費税（10%）</td><td style="text-align:right">¥${Number(q.tax).toLocaleString()}</td></tr>
+    <tr class="total-row"><td colspan="3" style="text-align:right">合計（税込）</td><td style="text-align:right">¥${Number(q.total).toLocaleString()}</td></tr>
+  </tbody>
+</table>
+${q.notes?`<div class="note-box"><strong>備考:</strong> ${q.notes}</div>`:''}
+<div class="footer">CLASSIX株式会社 ｜ 〒150-0000 東京都渋谷区 ｜ admin@classix.co.jp<br>本見積書の有効期限は発行日より30日間です。お問い合わせは上記までご連絡ください。</div>
+<div class="btns">
+  <button class="btn-print" onclick="window.print();">印刷 / PDF保存</button>
+  <button class="btn-close" onclick="window.close();">閉じる</button>
+</div>
+</body></html>`);
+  w.document.close();
+};
+
 const downloadCSV = (data, filename) => {
   if (!data || data.length === 0) return;
   const headers = Object.keys(data[0]).join(',');
@@ -226,12 +303,14 @@ const statusBadge = (status) => {
     '有効':'bg-green-100 text-green-700','契約中':'bg-green-100 text-green-700',
     '入金済':'bg-green-100 text-green-700','締結済':'bg-green-100 text-green-700',
     '公開中':'bg-green-100 text-green-700','完了':'bg-green-100 text-green-700',
+    '承認済':'bg-green-100 text-green-700',
     '審査中':'bg-orange-100 text-orange-700','署名中':'bg-orange-100 text-orange-700',
     '送信済':'bg-orange-100 text-orange-700','予約済':'bg-orange-100 text-orange-700',
+    '送付済':'bg-orange-100 text-orange-700',
     'トライアル':'bg-blue-100 text-blue-700','発行済':'bg-blue-100 text-blue-700',
-    '準備中':'bg-blue-100 text-blue-700',
+    '準備中':'bg-blue-100 text-blue-700','受注':'bg-blue-100 text-blue-700',
     '停止':'bg-red-100 text-red-700','停止中':'bg-red-100 text-red-700',
-    '未入金':'bg-red-100 text-red-700','失敗':'bg-red-100 text-red-700',
+    '未入金':'bg-red-100 text-red-700','失敗':'bg-red-100 text-red-700','失注':'bg-red-100 text-red-700',
     '下書き':'bg-slate-100 text-slate-600',
   };
   const cls = map[status] || 'bg-slate-100 text-slate-600';
@@ -714,6 +793,191 @@ const ModalRenderer = ({ modal, setModal, data, setData, showToast }) => {
     );
   }
 
+  if (modal.type === 'quoteNew' || modal.type === 'quoteEdit') {
+    const isEdit = modal.type === 'quoteEdit';
+    const orig = isEdit ? modal.data : {};
+    const today = new Date().toISOString().slice(0,10);
+    const validDate = new Date(Date.now()+30*24*60*60*1000).toISOString().slice(0,10);
+    const [form, setForm] = React.useState({
+      tenant:'', agency:'', issueDate:today, validUntil:validDate,
+      status:'下書き', notes:'',
+      ...orig,
+      items: orig.items ? orig.items.map(i=>({...i})) : [{name:'', qty:1, unitPrice:0, amount:0}]
+    });
+    const calcTotals = (items) => {
+      const subtotal = items.reduce((s,i)=>s+Number(i.amount),0);
+      const tax = Math.floor(subtotal * 0.1);
+      return { subtotal, tax, total: subtotal + tax };
+    };
+    const updateItem = (idx, field, val) => {
+      const items = form.items.map((it,i)=>{
+        if(i!==idx) return it;
+        const updated = {...it, [field]: val};
+        if(field==='qty'||field==='unitPrice') updated.amount = Number(updated.qty)*Number(updated.unitPrice);
+        return updated;
+      });
+      setForm({...form, items, ...calcTotals(items)});
+    };
+    const addItem = () => {
+      const items = [...form.items, {name:'', qty:1, unitPrice:0, amount:0}];
+      setForm({...form, items, ...calcTotals(items)});
+    };
+    const removeItem = (idx) => {
+      const items = form.items.filter((_,i)=>i!==idx);
+      setForm({...form, items, ...calcTotals(items)});
+    };
+    const save = () => {
+      if (!form.tenant) { showToast('テナントを選択してください','error'); return; }
+      const totals = calcTotals(form.items);
+      const item = {...form, ...totals};
+      if (isEdit) {
+        setData(prev=>({...prev, quotes:prev.quotes.map(q=>q.id===item.id?item:q)}));
+      } else {
+        setData(prev=>({...prev, quotes:[...(prev.quotes||[]), {...item, id:'QT-'+Date.now()}]}));
+      }
+      showToast(isEdit?'見積書を保存しました':'見積書を作成しました'); close();
+    };
+    const del = () => {
+      setData(prev=>({...prev, quotes:(prev.quotes||[]).filter(q=>q.id!==form.id)}));
+      showToast('見積書を削除しました','warning'); close();
+    };
+    return (
+      <Modal title={isEdit?'見積書編集':'見積書作成'} onClose={close} size="2xl">
+        <div className="grid grid-cols-2 gap-3 mb-1">
+          <FormField label="テナント" required><Select value={form.tenant} onChange={e=>setForm({...form,tenant:e.target.value})}>
+            <option value="">選択してください</option>{data.tenants.map(t=><option key={t.id}>{t.name}</option>)}
+          </Select></FormField>
+          <FormField label="代理店"><Select value={form.agency} onChange={e=>setForm({...form,agency:e.target.value})}>
+            <option value="">直販</option>{data.agencies.map(a=><option key={a.id}>{a.name}</option>)}
+          </Select></FormField>
+          <FormField label="発行日"><Input type="date" value={form.issueDate} onChange={e=>setForm({...form,issueDate:e.target.value})}/></FormField>
+          <FormField label="有効期限"><Input type="date" value={form.validUntil} onChange={e=>setForm({...form,validUntil:e.target.value})}/></FormField>
+        </div>
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-slate-700">明細</label>
+            <button onClick={addItem} className="text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1 rounded">＋ 行追加</button>
+          </div>
+          <div className="border border-slate-200 rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="text-left px-3 py-2 text-xs text-slate-500 font-medium">品目・サービス名</th>
+                  <th className="text-right px-3 py-2 text-xs text-slate-500 font-medium" style={{width:'64px'}}>数量</th>
+                  <th className="text-right px-3 py-2 text-xs text-slate-500 font-medium" style={{width:'130px'}}>単価（円）</th>
+                  <th className="text-right px-3 py-2 text-xs text-slate-500 font-medium" style={{width:'130px'}}>金額（円）</th>
+                  <th style={{width:'32px'}}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {form.items.map((item,idx)=>(
+                  <tr key={idx} className="border-t border-slate-100">
+                    <td className="px-2 py-1"><Input value={item.name} onChange={e=>updateItem(idx,'name',e.target.value)} placeholder="サービス名"/></td>
+                    <td className="px-2 py-1"><Input type="number" value={item.qty} onChange={e=>updateItem(idx,'qty',e.target.value)} className="text-right"/></td>
+                    <td className="px-2 py-1"><Input type="number" value={item.unitPrice} onChange={e=>updateItem(idx,'unitPrice',e.target.value)} className="text-right"/></td>
+                    <td className="px-2 py-1 text-right font-medium text-slate-700">{fmtY(item.amount)}</td>
+                    <td className="px-2 py-1 text-center"><button onClick={()=>removeItem(idx)} className="text-slate-400 hover:text-red-500 text-lg leading-none">×</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex flex-col items-end gap-1 mt-3 text-sm">
+            <div className="flex gap-12"><span className="text-slate-500">小計</span><span className="font-medium w-32 text-right">{fmtY(form.items.reduce((s,i)=>s+Number(i.amount),0))}</span></div>
+            <div className="flex gap-12"><span className="text-slate-500">消費税（10%）</span><span className="font-medium w-32 text-right">{fmtY(Math.floor(form.items.reduce((s,i)=>s+Number(i.amount),0)*0.1))}</span></div>
+            <div className="flex gap-12 text-base font-bold text-blue-700 border-t border-slate-200 pt-2 mt-1">
+              <span>合計（税込）</span>
+              <span className="w-32 text-right">{fmtY(form.items.reduce((s,i)=>s+Number(i.amount),0)+Math.floor(form.items.reduce((s,i)=>s+Number(i.amount),0)*0.1))}</span>
+            </div>
+          </div>
+        </div>
+        <FormField label="ステータス"><Select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}>
+          <option>下書き</option><option>送付済</option><option>承認済</option><option>受注</option><option>失注</option>
+        </Select></FormField>
+        <FormField label="備考"><Textarea rows={2} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="任意"/></FormField>
+        <div className="flex justify-between mt-6">
+          {isEdit?<BtnDanger onClick={del}>削除</BtnDanger>:<div/>}
+          <div className="flex gap-3"><BtnSecondary onClick={close}>キャンセル</BtnSecondary><BtnPrimary onClick={save}>保存</BtnPrimary></div>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (modal.type === 'quoteDetail') {
+    const q = modal.data;
+    const convertToInvoice = () => {
+      const newInv = {
+        id:'INV-'+Date.now(), tenant:q.tenant,
+        month:new Date().toISOString().slice(0,7),
+        basicFee:q.subtotal, usageFee:0, total:q.total,
+        dueDate:new Date(Date.now()+30*24*60*60*1000).toISOString().slice(0,10),
+        status:'発行済'
+      };
+      setData(prev=>({...prev, invoices:[...prev.invoices, newInv]}));
+      showToast('請求書を作成しました'); close();
+    };
+    return (
+      <Modal title="見積書詳細" onClose={close} size="xl">
+        <div className="space-y-0 text-sm mb-4">
+          {[['見積書ID',q.id],['テナント',q.tenant],['代理店',q.agency||'直販'],['発行日',q.issueDate],['有効期限',q.validUntil]].map(([k,v])=>(
+            <div key={k} className="flex justify-between py-2 border-b border-slate-100">
+              <span className="text-slate-500">{k}</span><span className="font-medium">{v}</span>
+            </div>
+          ))}
+          <div className="flex justify-between py-2 border-b border-slate-100">
+            <span className="text-slate-500">ステータス</span>{statusBadge(q.status)}
+          </div>
+        </div>
+        <div className="border border-slate-200 rounded-lg overflow-hidden mb-4">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="text-left px-4 py-2 text-xs text-slate-500 font-medium">品目</th>
+                <th className="text-right px-4 py-2 text-xs text-slate-500 font-medium">数量</th>
+                <th className="text-right px-4 py-2 text-xs text-slate-500 font-medium">単価</th>
+                <th className="text-right px-4 py-2 text-xs text-slate-500 font-medium">金額</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(q.items||[]).map((item,i)=>(
+                <tr key={i} className="border-t border-slate-100">
+                  <td className="px-4 py-2">{item.name}</td>
+                  <td className="px-4 py-2 text-right">{item.qty}</td>
+                  <td className="px-4 py-2 text-right">{fmtY(item.unitPrice)}</td>
+                  <td className="px-4 py-2 text-right">{fmtY(item.amount)}</td>
+                </tr>
+              ))}
+              <tr className="border-t border-slate-200 bg-slate-50">
+                <td colSpan="3" className="px-4 py-2 text-right font-medium text-slate-600">小計</td>
+                <td className="px-4 py-2 text-right font-medium">{fmtY(q.subtotal)}</td>
+              </tr>
+              <tr className="bg-slate-50">
+                <td colSpan="3" className="px-4 py-2 text-right font-medium text-slate-600">消費税（10%）</td>
+                <td className="px-4 py-2 text-right font-medium">{fmtY(q.tax)}</td>
+              </tr>
+              <tr className="bg-blue-50">
+                <td colSpan="3" className="px-4 py-2 text-right font-bold text-blue-700">合計（税込）</td>
+                <td className="px-4 py-2 text-right font-bold text-blue-700">{fmtY(q.total)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        {q.notes&&<div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800 mb-4"><strong>備考: </strong>{q.notes}</div>}
+        <div className="flex justify-between mt-4">
+          <div className="flex gap-2">
+            {(q.status==='承認済'||q.status==='受注')&&<BtnPrimary onClick={convertToInvoice}>請求書に変換</BtnPrimary>}
+          </div>
+          <div className="flex gap-2">
+            <BtnSecondary onClick={()=>setModal({type:'quoteEdit',data:q})}>編集</BtnSecondary>
+            <BtnSecondary onClick={()=>{printQuote(q);showToast('印刷プレビューを開きました','info');}}>PDF出力</BtnSecondary>
+            <BtnSecondary onClick={()=>{downloadCSV([{...q,items:JSON.stringify(q.items)}],'quote-'+q.id+'.csv');showToast('CSV出力しました');}}>CSV出力</BtnSecondary>
+            <BtnSecondary onClick={close}>閉じる</BtnSecondary>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
   return null;
 };
 
@@ -1071,6 +1335,61 @@ const BillingPage = ({ data, setData, setModal, showToast }) => {
           </div>
         </Card>
       )}
+    </div>
+  );
+};
+
+// ==================== Quote ====================
+const QuotePage = ({ data, setData, setModal, showToast }) => {
+  const [search, setSearch] = React.useState('');
+  const [statusFilter, setStatusFilter] = React.useState('all');
+  const quotes = data.quotes || [];
+  const filtered = quotes.filter(q =>
+    (statusFilter==='all'||q.status===statusFilter) &&
+    (q.tenant.includes(search)||q.id.includes(search))
+  );
+  const totalReceived = quotes.filter(q=>q.status==='承認済'||q.status==='受注').reduce((s,q)=>s+q.total,0);
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <div className="flex gap-2 items-center">
+          <SearchBar value={search} onChange={setSearch} placeholder="テナント名・見積書ID"/>
+          <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}
+            className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="all">全ステータス</option>
+            <option>下書き</option><option>送付済</option><option>承認済</option><option>受注</option><option>失注</option>
+          </select>
+        </div>
+        <div className="flex gap-3">
+          <BtnSecondary onClick={()=>{downloadCSV(quotes.map(q=>({...q,items:JSON.stringify(q.items)})),'quotes.csv');showToast('CSV出力しました');}}>CSV出力</BtnSecondary>
+          <BtnPrimary onClick={()=>setModal({type:'quoteNew',data:{}})}>＋ 見積書作成</BtnPrimary>
+        </div>
+      </div>
+      <div className="grid grid-cols-4 gap-4">
+        <KPICard title="見積総数" value={`${quotes.length}件`} color="blue" icon="≡"/>
+        <KPICard title="送付済" value={`${quotes.filter(q=>q.status==='送付済').length}件`} color="orange" icon="→"/>
+        <KPICard title="承認済・受注" value={`${quotes.filter(q=>q.status==='承認済'||q.status==='受注').length}件`} color="green" icon="✓"/>
+        <KPICard title="受注金額（税込）" value={fmtY(totalReceived)} color="purple" icon="¥"/>
+      </div>
+      <Card>
+        <CardHeader title="見積一覧">
+          <span className="text-xs text-slate-400">{filtered.length}件</span>
+        </CardHeader>
+        <Table
+          cols={[
+            {key:'id',label:'見積書ID'},
+            {key:'tenant',label:'テナント'},
+            {key:'agency',label:'代理店',render:v=>v||'直販'},
+            {key:'issueDate',label:'発行日'},
+            {key:'validUntil',label:'有効期限'},
+            {key:'subtotal',label:'小計',render:v=>fmtY(v)},
+            {key:'total',label:'合計（税込）',render:v=>fmtY(v)},
+            {key:'status',label:'状態',render:v=>statusBadge(v)},
+          ]}
+          rows={filtered}
+          onRowClick={row=>setModal({type:'quoteDetail',data:row})}
+        />
+      </Card>
     </div>
   );
 };
@@ -1815,7 +2134,7 @@ const App = () => {
 
   const loadAllData = React.useCallback(async () => {
     setDataLoading(true);
-    const cols = ['agencies','subagencies','tenants','contracts','invoices','products','callLogs','tokenLogs','econtracts','notices','users'];
+    const cols = ['agencies','subagencies','tenants','contracts','invoices','quotes','products','callLogs','tokenLogs','econtracts','notices','users'];
     const result = {};
     await Promise.all(cols.map(async col => {
       const snap = await db.collection(col).get();
@@ -1833,7 +2152,7 @@ const App = () => {
 
   const syncChanges = React.useCallback(async (prev, next) => {
     if (!prev || !next) return;
-    const syncCols = ['agencies','subagencies','tenants','contracts','invoices','products','callLogs','tokenLogs','econtracts','notices'];
+    const syncCols = ['agencies','subagencies','tenants','contracts','invoices','quotes','products','callLogs','tokenLogs','econtracts','notices'];
     for (const col of syncCols) {
       if (JSON.stringify(prev[col]) === JSON.stringify(next[col])) continue;
       const prevItems = prev[col] || [];
@@ -1899,6 +2218,7 @@ const App = () => {
       case 'dashboard': return <DashboardPage {...pageProps}/>;
       case 'sales': return <SalesPage {...pageProps}/>;
       case 'billing': return <BillingPage {...pageProps}/>;
+      case 'quote': return <QuotePage {...pageProps}/>;
       case 'agency': return <AgencyPage {...pageProps}/>;
       case 'subagency': return <SubAgencyPage {...pageProps}/>;
       case 'tenant': return <TenantPage {...pageProps}/>;
