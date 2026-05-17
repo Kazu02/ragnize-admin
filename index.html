@@ -44,27 +44,32 @@ const { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Carte
 
 const MENU_ITEMS = [
   { id: 'dashboard', icon: '⊞', label: 'ダッシュボード' },
-  { id: 'sales', icon: '¥', label: '売上管理' },
-  { id: 'billing', icon: '≡', label: '請求管理' },
-  { id: 'quote', icon: '✎', label: '見積管理' },
+  { divider: '財務・書類' },
+  { id: 'sales',    icon: '¥', label: '売上管理' },
+  { id: 'billing',  icon: '≡', label: '請求管理' },
+  { id: 'quote',    icon: '✎', label: '見積管理' },
   { id: 'delivery', icon: '◫', label: '納品書管理' },
   { id: 'training', icon: '◑', label: '研修書管理' },
-  { id: 'agency', icon: '◈', label: '代理店管理' },
+  { divider: '顧客・パートナー' },
+  { id: 'crm',       icon: '◑', label: '顧客管理(CRM)' },
+  { id: 'tenant',    icon: '◉', label: 'テナント管理' },
+  { id: 'agency',    icon: '◈', label: '代理店管理' },
   { id: 'subagency', icon: '◇', label: '孫代理店管理' },
-  { id: 'tenant', icon: '◉', label: 'テナント管理' },
-  { id: 'crm', icon: '◑', label: '顧客管理(CRM)' },
-  { id: 'contract', icon: '▤', label: '契約管理' },
+  { id: 'contract',  icon: '▤', label: '契約管理' },
+  { divider: '製品・利用管理' },
   { id: 'product', icon: '▪', label: '製品管理' },
   { id: 'pricing', icon: '⊕', label: '課金単価設定' },
   { id: 'calllog', icon: '○', label: '通話利用管理' },
-  { id: 'token', icon: '◆', label: 'トークン管理' },
-  { id: 'report', icon: '▦', label: 'レポート' },
+  { id: 'token',   icon: '◆', label: 'トークン管理' },
+  { divider: 'その他' },
   { id: 'econtract', icon: '✦', label: '電子契約管理' },
-  { id: 'notice', icon: '◎', label: 'お知らせ管理' },
+  { id: 'report',    icon: '▦', label: 'レポート' },
+  { id: 'notice',    icon: '◎', label: 'お知らせ管理' },
+  { divider: 'システム' },
   { id: 'permission', icon: '⊛', label: '権限管理' },
-  { id: 'settings', icon: '⚙', label: 'システム設定' },
-  { id: 'users', icon: '◈', label: 'ユーザー管理' },
-  { id: 'auditlog', icon: '◷', label: '操作ログ' },
+  { id: 'users',     icon: '◈', label: 'ユーザー管理' },
+  { id: 'auditlog',  icon: '◷', label: '操作ログ' },
+  { id: 'settings',  icon: '⚙', label: 'システム設定' },
 ];
 
 const INITIAL_DATA = {
@@ -385,6 +390,9 @@ const LoginPage = ({ showToast, toasts, removeToast }) => {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [loading, setLoading] = React.useState(false);
+  const [resetMode, setResetMode] = React.useState(false);
+  const [resetSent, setResetSent] = React.useState(false);
+
   const login = async (e) => {
     e.preventDefault();
     if (!email || !password) { showToast('メールアドレスとパスワードを入力してください','error'); return; }
@@ -403,6 +411,19 @@ const LoginPage = ({ showToast, toasts, removeToast }) => {
       setLoading(false);
     }
   };
+
+  const sendReset = async (e) => {
+    e.preventDefault();
+    if (!email) { showToast('メールアドレスを入力してください','error'); return; }
+    setLoading(true);
+    try {
+      await auth.sendPasswordResetEmail(email);
+      setResetSent(true);
+    } catch(err) {
+      showToast('送信に失敗しました: ' + (err.code||err.message), 'error');
+    } finally { setLoading(false); }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-blue-900 flex items-center justify-center p-4">
       <Toast toasts={toasts} removeToast={removeToast}/>
@@ -411,24 +432,53 @@ const LoginPage = ({ showToast, toasts, removeToast }) => {
           <div className="text-blue-600 font-bold text-3xl tracking-wide mb-2">RAGNIZE</div>
           <div className="text-slate-500 text-sm">管理プラットフォーム</div>
         </div>
-        <form onSubmit={login} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">メールアドレス</label>
-            <input type="email" value={email} onChange={e=>setEmail(e.target.value)} required
-              className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="admin@classix.co.jp" autoFocus/>
+        {!resetMode ? (
+          <form onSubmit={login} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">メールアドレス</label>
+              <input type="email" value={email} onChange={e=>setEmail(e.target.value)} required
+                className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="admin@ragnize.com" autoFocus/>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">パスワード</label>
+              <input type="password" value={password} onChange={e=>setPassword(e.target.value)} required
+                className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="••••••••"/>
+            </div>
+            <button type="submit" disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white py-2.5 rounded-lg text-sm font-medium transition-colors mt-2">
+              {loading ? 'ログイン中...' : 'ログイン'}
+            </button>
+            <button type="button" onClick={()=>setResetMode(true)} className="w-full text-center text-xs text-blue-500 hover:text-blue-700 mt-1">
+              パスワードを忘れた場合
+            </button>
+          </form>
+        ) : resetSent ? (
+          <div className="text-center space-y-4">
+            <div className="text-4xl">✉</div>
+            <p className="text-sm text-slate-700 font-medium">パスワードリセットメールを送信しました</p>
+            <p className="text-xs text-slate-500">{email} を確認してください</p>
+            <button onClick={()=>{setResetMode(false);setResetSent(false);}} className="text-sm text-blue-600 hover:underline">ログイン画面に戻る</button>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">パスワード</label>
-            <input type="password" value={password} onChange={e=>setPassword(e.target.value)} required
-              className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="••••••••"/>
-          </div>
-          <button type="submit" disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white py-2.5 rounded-lg text-sm font-medium transition-colors mt-2">
-            {loading ? 'ログイン中...' : 'ログイン'}
-          </button>
-        </form>
+        ) : (
+          <form onSubmit={sendReset} className="space-y-4">
+            <p className="text-sm text-slate-600">パスワードリセット用のメールを送信します。</p>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">メールアドレス</label>
+              <input type="email" value={email} onChange={e=>setEmail(e.target.value)} required
+                className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="admin@ragnize.com" autoFocus/>
+            </div>
+            <button type="submit" disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white py-2.5 rounded-lg text-sm font-medium transition-colors">
+              {loading ? '送信中...' : 'リセットメールを送信'}
+            </button>
+            <button type="button" onClick={()=>setResetMode(false)} className="w-full text-center text-xs text-slate-500 hover:text-slate-700">
+              ログイン画面に戻る
+            </button>
+          </form>
+        )}
         <p className="text-center text-xs text-slate-400 mt-8">CLASSIX株式会社 © 2025</p>
       </div>
     </div>
@@ -1386,14 +1436,23 @@ const Sidebar = ({ page, setPage }) => (
       <div className="text-slate-400 text-xs mt-0.5">管理プラットフォーム</div>
     </div>
     <nav className="flex-1 py-2">
-      {MENU_ITEMS.map(item=>(
-        <button key={item.id} onClick={()=>setPage(item.id)}
-          className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors text-left
-            ${page===item.id ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>
-          <span className="text-base w-5 text-center">{item.icon}</span>
-          <span>{item.label}</span>
-        </button>
-      ))}
+      {MENU_ITEMS.map((item, i) => {
+        if (item.divider) {
+          return (
+            <div key={'div-'+i} className="px-4 pt-4 pb-1">
+              <span className="text-slate-500 text-xs font-semibold uppercase tracking-widest">{item.divider}</span>
+            </div>
+          );
+        }
+        return (
+          <button key={item.id} onClick={()=>setPage(item.id)}
+            className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm transition-colors text-left
+              ${page===item.id ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>
+            <span className="text-sm w-4 text-center flex-shrink-0">{item.icon}</span>
+            <span className="truncate">{item.label}</span>
+          </button>
+        );
+      })}
     </nav>
     <div className="px-4 py-3 border-t border-slate-700 text-slate-500 text-xs">v2.4.1</div>
   </div>
@@ -1718,7 +1777,7 @@ const BillingPage = ({ data, setData, setModal, showToast }) => {
   const [issueMonth, setIssueMonth] = React.useState('2025-03');
   const [issueTenant, setIssueTenant] = React.useState('all');
   const unpaid = data.invoices.filter(i=>i.status==='未入金');
-  const filtered = data.invoices.filter(i=>i.tenant.includes(search)||i.id.includes(search));
+  const filtered = data.invoices.filter(i=>(i.tenant||'').includes(search)||(i.id||'').includes(search));
 
   const closingProcess = () => setModal({ type:'confirm', data:{
     title:'月次締め処理', message:'2025年3月の月次締め処理を実行します。よろしいですか？',
@@ -1837,7 +1896,7 @@ const DeliveryPage = ({ data, setData, setModal, showToast }) => {
   const deliveries = data.deliveries || [];
   const filtered = deliveries.filter(d=>
     (statusFilter==='all'||d.status===statusFilter) &&
-    (d.tenant.includes(search)||d.id.includes(search))
+    ((d.tenant||'').includes(search)||(d.id||'').includes(search))
   );
   return (
     <div className="space-y-4">
@@ -1994,7 +2053,7 @@ const QuotePage = ({ data, setData, setModal, showToast }) => {
   const quotes = data.quotes || [];
   const filtered = quotes.filter(q =>
     (statusFilter==='all'||q.status===statusFilter) &&
-    (q.tenant.includes(search)||q.id.includes(search))
+    ((q.tenant||'').includes(search)||(q.id||'').includes(search))
   );
   const totalReceived = quotes.filter(q=>q.status==='承認済'||q.status==='受注').reduce((s,q)=>s+q.total,0);
   return (
@@ -2045,7 +2104,7 @@ const QuotePage = ({ data, setData, setModal, showToast }) => {
 // ==================== Agency ====================
 const AgencyPage = ({ data, setData, setModal, showToast }) => {
   const [search, setSearch] = React.useState('');
-  const filtered = data.agencies.filter(a=>a.name.includes(search)||a.code.includes(search));
+  const filtered = data.agencies.filter(a=>(a.name||'').includes(search)||(a.code||'').includes(search));
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -2070,7 +2129,7 @@ const AgencyPage = ({ data, setData, setModal, showToast }) => {
 // ==================== SubAgency ====================
 const SubAgencyPage = ({ data, setData, setModal, showToast }) => {
   const [search, setSearch] = React.useState('');
-  const filtered = data.subagencies.filter(a=>a.name.includes(search)||a.parentAgency.includes(search));
+  const filtered = data.subagencies.filter(a=>(a.name||'').includes(search)||(a.parentAgency||'').includes(search));
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -2094,7 +2153,7 @@ const SubAgencyPage = ({ data, setData, setModal, showToast }) => {
 // ==================== Tenant ====================
 const TenantPage = ({ data, setData, setModal, showToast }) => {
   const [search, setSearch] = React.useState('');
-  const filtered = data.tenants.filter(t=>t.name.includes(search)||t.agency.includes(search));
+  const filtered = data.tenants.filter(t=>(t.name||'').includes(search)||(t.agency||'').includes(search));
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -2119,7 +2178,7 @@ const TenantPage = ({ data, setData, setModal, showToast }) => {
 // ==================== Contract ====================
 const ContractPage = ({ data, setData, setModal, showToast }) => {
   const [search, setSearch] = React.useState('');
-  const filtered = data.contracts.filter(c=>c.tenant.includes(search)||c.product.includes(search)||c.id.includes(search));
+  const filtered = data.contracts.filter(c=>(c.tenant||'').includes(search)||(c.product||'').includes(search)||(c.id||'').includes(search));
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -2143,7 +2202,7 @@ const ContractPage = ({ data, setData, setModal, showToast }) => {
 // ==================== Product ====================
 const ProductPage = ({ data, setData, setModal, showToast }) => {
   const [search, setSearch] = React.useState('');
-  const filtered = data.products.filter(p=>p.name.includes(search)||p.category.includes(search));
+  const filtered = data.products.filter(p=>(p.name||'').includes(search)||(p.category||'').includes(search));
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -2234,7 +2293,7 @@ const callKpiData = [
 ];
 const CallLogPage = ({ data, showToast }) => {
   const [search, setSearch] = React.useState('');
-  const filtered = data.callLogs.filter(c=>c.tenant.includes(search)||c.type.includes(search));
+  const filtered = data.callLogs.filter(c=>(c.tenant||'').includes(search)||(c.type||'').includes(search));
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-4 gap-4">
@@ -2272,14 +2331,18 @@ const CallLogPage = ({ data, showToast }) => {
 // ==================== Token ====================
 const TokenPage = ({ data, setModal, showToast }) => {
   const [search, setSearch] = React.useState('');
-  const filtered = data.tokenLogs.filter(t=>t.tenant.includes(search)||t.event.includes(search));
+  const filtered = data.tokenLogs.filter(t=>(t.tenant||'').includes(search)||(t.event||'').includes(search));
+  const granted = data.tokenLogs.filter(t=>t.event==='付与'||t.event==='追加購入').reduce((s,t)=>s+(t.tokens||0),0);
+  const consumed = Math.abs(data.tokenLogs.filter(t=>t.event==='消費').reduce((s,t)=>s+(t.tokens||0),0));
+  const lastBalance = data.tokenLogs.length>0 ? (data.tokenLogs[data.tokenLogs.length-1].balance||0) : 0;
+  const tokenRevenue = data.tokenLogs.reduce((s,t)=>s+(t.amount||0),0);
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-4 gap-4">
-        <KPICard title="総付与トークン" value="150,000" color="blue" icon="◆"/>
-        <KPICard title="消費トークン" value="1,750" color="orange" icon="↓"/>
-        <KPICard title="残高合計" value="146,700" color="green" icon="○"/>
-        <KPICard title="トークン売上" value="¥1,505" color="purple" icon="¥"/>
+        <KPICard title="総付与トークン" value={fmt(granted)} color="blue" icon="◆"/>
+        <KPICard title="消費トークン" value={fmt(consumed)} color="orange" icon="↓"/>
+        <KPICard title="残高合計" value={fmt(lastBalance)} color="green" icon="○"/>
+        <KPICard title="トークン売上" value={fmtY(tokenRevenue)} color="purple" icon="¥"/>
       </div>
       <Card>
         <CardHeader title="トークン残高推移">
@@ -2398,7 +2461,7 @@ const ReportPage = ({ data, showToast }) => {
 const EContractPage = ({ data, setData, setModal, showToast }) => {
   const [tab, setTab] = React.useState('list');
   const [search, setSearch] = React.useState('');
-  const filtered = data.econtracts.filter(e=>e.tenant.includes(search)||e.id.includes(search));
+  const filtered = data.econtracts.filter(e=>(e.tenant||'').includes(search)||(e.id||'').includes(search));
   const pending = data.econtracts.filter(e=>['署名中','送信済'].includes(e.status));
   return (
     <div className="space-y-4">
@@ -2465,7 +2528,7 @@ const EContractPage = ({ data, setData, setModal, showToast }) => {
 // ==================== Notice ====================
 const NoticePage = ({ data, setData, setModal, showToast }) => {
   const [search, setSearch] = React.useState('');
-  const filtered = data.notices.filter(n=>n.title.includes(search));
+  const filtered = data.notices.filter(n=>(n.title||'').includes(search));
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
