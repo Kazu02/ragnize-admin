@@ -52,6 +52,7 @@ const MENU_ITEMS = [
   { id: 'agency', icon: '◈', label: '代理店管理' },
   { id: 'subagency', icon: '◇', label: '孫代理店管理' },
   { id: 'tenant', icon: '◉', label: 'テナント管理' },
+  { id: 'crm', icon: '◑', label: '顧客管理(CRM)' },
   { id: 'contract', icon: '▤', label: '契約管理' },
   { id: 'product', icon: '▪', label: '製品管理' },
   { id: 'pricing', icon: '⊕', label: '課金単価設定' },
@@ -1481,11 +1482,24 @@ const CardHeader = ({ title, children }) => (
 // ==================== Dashboard ====================
 const PIE_COLORS = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#94a3b8'];
 
+const DashSection = ({ title, icon, isOpen, onToggle, badge, children }) => (
+  <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+    <button onClick={onToggle} className="w-full flex items-center justify-between px-5 py-3.5 bg-slate-50 hover:bg-slate-100 transition-colors">
+      <span className="flex items-center gap-2 font-semibold text-slate-700 text-sm">
+        <span>{icon}</span>{title}
+        {badge && <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">{badge}</span>}
+      </span>
+      <span className={`text-slate-400 text-xs transition-transform duration-200 ${isOpen?'rotate-180':''}`}>▼</span>
+    </button>
+    {isOpen && <div className="p-4">{children}</div>}
+  </div>
+);
+
 const DashboardPage = ({ data, setPage }) => {
   const activeTenants = data.tenants.filter(t=>t.status==='契約中');
   const totalMRR = activeTenants.reduce((s,t)=>s+(t.mrr||0),0);
   const unpaidInvoices = data.invoices.filter(i=>i.status==='未入金');
-  const unpaidTotal = unpaidInvoices.reduce((s,i)=>s+i.total,0);
+  const unpaidTotal = unpaidInvoices.reduce((s,i)=>s+(i.total||0),0);
   const activeAgencies = data.agencies.filter(a=>a.status==='有効');
   const activeContracts = data.contracts.filter(c=>c.status==='契約中');
   const callMinutes = data.callLogs.reduce((s,c)=>s+Math.floor((c.seconds||0)/60),0);
@@ -1501,161 +1515,191 @@ const DashboardPage = ({ data, setPage }) => {
   const pieData = Object.entries(productMRR).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value).slice(0,6);
   const totalPieMRR = pieData.reduce((s,p)=>s+p.value,0)||1;
 
+  const [open, setOpen] = React.useState({finance:true, tenant:true, docs:true, recent:false});
+  const toggle = key => setOpen(prev=>({...prev,[key]:!prev[key]}));
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {expiringContracts.length>0 && (
         <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start gap-3">
           <span className="text-orange-500 text-xl mt-0.5">⚠</span>
           <div className="flex-1">
             <p className="text-sm font-semibold text-orange-700">契約更新アラート: {expiringContracts.length}件が30日以内に期限切れ</p>
             <div className="flex flex-wrap gap-2 mt-2">
-              {expiringContracts.map(c=>(
-                <span key={c.id} className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
-                  {c.tenant}（{c.endDate}）
-                </span>
-              ))}
+              {expiringContracts.map(c=><span key={c.id} className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">{c.tenant}（{c.endDate}）</span>)}
             </div>
           </div>
         </div>
       )}
-      <div className="grid grid-cols-4 gap-4">
-        <KPICard title="当月MRR合計" value={fmtY(totalMRR)} sub={`契約テナント ${activeTenants.length}社`} color="blue" icon="¥"/>
-        <KPICard title="有効代理店数" value={`${activeAgencies.length}社`} sub={`孫代理店 ${data.subagencies.filter(s=>s.status==='有効').length}社`} color="green" icon="◈"/>
-        <KPICard title="有効契約件数" value={`${activeContracts.length}件`} sub={`全${data.contracts.length}件中`} color="purple" icon="◉"/>
-        <KPICard title="未入金合計" value={fmtY(unpaidTotal)} sub={`${unpaidInvoices.length}件未入金`} color={unpaidInvoices.length>0?'red':'green'} icon={unpaidInvoices.length>0?'!':'✓'}/>
-      </div>
-      <div className="grid grid-cols-4 gap-4">
-        <KPICard title="見積送付済以上" value={`${(data.quotes||[]).filter(q=>q.status!=='下書き'&&q.status!=='失注').length}件`} color="blue" icon="≡"/>
-        <KPICard title="受注金額（税込）" value={fmtY((data.quotes||[]).filter(q=>q.status==='承認済'||q.status==='受注').reduce((s,q)=>s+q.total,0))} color="green" icon="✓"/>
-        <KPICard title="更新期限アラート" value={`${expiringContracts.length}件`} sub="30日以内" color={expiringContracts.length>0?'red':'green'} icon={expiringContracts.length>0?'!':'✓'}/>
-        <KPICard title="通話時間合計" value={`${fmt(callMinutes)}分`} sub="ログ集計" color="purple" icon="○"/>
-      </div>
-      <div className="grid grid-cols-2 gap-6">
-        <Card>
-          <CardHeader title="製品別MRR構成"/>
-          <div className="p-4">
-            {pieData.length>0 ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value"
-                    label={({name,value})=>`${name} ${Math.round(value/totalPieMRR*100)}%`} labelLine={false} fontSize={10}>
-                    {pieData.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}
-                  </Pie>
-                  <Tooltip formatter={(v)=>fmtY(v)}/>
-                </PieChart>
-              </ResponsiveContainer>
-            ) : <p className="text-slate-400 text-center py-16 text-sm">製品データなし</p>}
+
+      <DashSection title="売上・財務サマリー" icon="¥" isOpen={open.finance} onToggle={()=>toggle('finance')}>
+        <div className="space-y-4">
+          <div className="grid grid-cols-4 gap-4">
+            <KPICard title="当月MRR合計" value={fmtY(totalMRR)} sub={`契約テナント ${activeTenants.length}社`} color="blue" icon="¥"/>
+            <KPICard title="未入金合計" value={fmtY(unpaidTotal)} sub={`${unpaidInvoices.length}件未入金`} color={unpaidInvoices.length>0?'red':'green'} icon={unpaidInvoices.length>0?'!':'✓'}/>
+            <KPICard title="受注金額（税込）" value={fmtY((data.quotes||[]).filter(q=>q.status==='承認済'||q.status==='受注').reduce((s,q)=>s+(q.total||0),0))} color="green" icon="✓"/>
+            <KPICard title="見積送付済以上" value={`${(data.quotes||[]).filter(q=>q.status!=='下書き'&&q.status!=='失注').length}件`} color="blue" icon="≡"/>
           </div>
-        </Card>
-        <Card>
-          <CardHeader title="代理店別MRR"/>
-          <div className="p-4 space-y-3">
-            {data.agencies.filter(a=>a.status==='有効').sort((a,b)=>b.mrr-a.mrr).slice(0,5).map((a,i)=>{
-              const pct = totalMRR>0 ? Math.round(a.mrr/totalMRR*100) : 0;
+          <div className="bg-white rounded-xl border border-slate-100 p-3 space-y-2">
+            <p className="text-xs font-semibold text-slate-500 mb-3">代理店別MRR</p>
+            {data.agencies.filter(a=>a.status==='有効').sort((a,b)=>(b.mrr||0)-(a.mrr||0)).slice(0,5).map((a,i)=>{
+              const pct = totalMRR>0 ? Math.round((a.mrr||0)/totalMRR*100) : 0;
               return (
                 <div key={a.id} className="flex items-center gap-3">
                   <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center flex-shrink-0">{i+1}</span>
                   <div className="flex-1">
                     <div className="flex justify-between text-xs mb-1">
                       <span className="font-medium text-slate-700 truncate">{a.name}</span>
-                      <span className="text-slate-500 ml-2">{fmtY(a.mrr)}</span>
+                      <span className="text-slate-500 ml-2">{fmtY(a.mrr||0)}</span>
                     </div>
                     <div className="h-1.5 bg-slate-100 rounded-full"><div className="h-1.5 bg-blue-500 rounded-full" style={{width:`${pct}%`}}></div></div>
                   </div>
                 </div>
               );
             })}
+            {data.agencies.filter(a=>a.status==='有効').length===0 && <p className="text-slate-400 text-sm text-center py-2">代理店データなし</p>}
           </div>
-        </Card>
-      </div>
-      <div className="grid grid-cols-2 gap-6">
-        <Card>
-          <CardHeader title="最新契約"/>
-          <Table
-            cols={[{key:'id',label:'契約ID'},{key:'tenant',label:'テナント'},{key:'product',label:'製品'},{key:'monthlyFee',label:'月額',render:v=>fmtY(v)},{key:'status',label:'状態',render:v=>statusBadge(v)}]}
-            rows={data.contracts.slice(0,5)}
-          />
-        </Card>
-        <Card>
-          <CardHeader title="未入金・請求状況">
-            <span className="text-xs text-slate-400">{data.invoices.length}件</span>
-          </CardHeader>
-          <Table
-            cols={[{key:'id',label:'請求ID'},{key:'tenant',label:'テナント'},{key:'total',label:'合計',render:v=>fmtY(v)},{key:'dueDate',label:'期日'},{key:'status',label:'状態',render:v=>statusBadge(v)}]}
-            rows={data.invoices.slice(0,5)}
-          />
-        </Card>
-      </div>
+        </div>
+      </DashSection>
+
+      <DashSection title="テナント・契約状況" icon="◉" isOpen={open.tenant} onToggle={()=>toggle('tenant')} badge={expiringContracts.length>0?`更新${expiringContracts.length}件`:null}>
+        <div className="space-y-4">
+          <div className="grid grid-cols-4 gap-4">
+            <KPICard title="有効代理店数" value={`${activeAgencies.length}社`} sub={`孫代理店 ${data.subagencies.filter(s=>s.status==='有効').length}社`} color="green" icon="◈"/>
+            <KPICard title="有効契約件数" value={`${activeContracts.length}件`} sub={`全${data.contracts.length}件中`} color="purple" icon="◉"/>
+            <KPICard title="更新期限アラート" value={`${expiringContracts.length}件`} sub="30日以内" color={expiringContracts.length>0?'red':'green'} icon={expiringContracts.length>0?'!':'✓'}/>
+            <KPICard title="通話時間合計" value={`${fmt(callMinutes)}分`} sub="ログ集計" color="purple" icon="○"/>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-100 p-3">
+            <p className="text-xs font-semibold text-slate-500 mb-3">製品別MRR構成</p>
+            {pieData.length>0 ? (
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie data={pieData} cx="50%" cy="50%" outerRadius={75} dataKey="value"
+                    label={({name,value})=>`${name} ${Math.round(value/totalPieMRR*100)}%`} labelLine={false} fontSize={10}>
+                    {pieData.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}
+                  </Pie>
+                  <Tooltip formatter={(v)=>fmtY(v)}/>
+                </PieChart>
+              </ResponsiveContainer>
+            ) : <p className="text-slate-400 text-center py-12 text-sm">製品データなし</p>}
+          </div>
+        </div>
+      </DashSection>
+
+      <DashSection title="書類・案件状況" icon="◫" isOpen={open.docs} onToggle={()=>toggle('docs')}>
+        <div className="grid grid-cols-4 gap-4">
+          <KPICard title="見積書" value={`${(data.quotes||[]).length}件`} sub={`承認済 ${(data.quotes||[]).filter(q=>q.status==='承認済').length}件`} color="blue" icon="✎"/>
+          <KPICard title="納品書" value={`${(data.deliveries||[]).length}件`} sub={`納品済 ${(data.deliveries||[]).filter(d=>d.status==='納品済').length}件`} color="green" icon="◫"/>
+          <KPICard title="研修書" value={`${(data.trainings||[]).length}件`} sub={`実施済 ${(data.trainings||[]).filter(t=>t.status==='実施済').length}件`} color="purple" icon="◑"/>
+          <KPICard title="請求書（全期間）" value={`${data.invoices.length}件`} sub={`未入金 ${unpaidInvoices.length}件`} color={unpaidInvoices.length>0?'red':'green'} icon="≡"/>
+        </div>
+      </DashSection>
+
+      <DashSection title="最新データ" icon="◷" isOpen={open.recent} onToggle={()=>toggle('recent')}>
+        <div className="grid grid-cols-2 gap-4">
+          <Card>
+            <CardHeader title="最新契約"/>
+            <Table
+              cols={[{key:'id',label:'契約ID'},{key:'tenant',label:'テナント'},{key:'product',label:'製品'},{key:'monthlyFee',label:'月額',render:v=>fmtY(v)},{key:'status',label:'状態',render:v=>statusBadge(v)}]}
+              rows={data.contracts.slice(0,5)}
+            />
+          </Card>
+          <Card>
+            <CardHeader title="未入金・請求状況"><span className="text-xs text-slate-400">{data.invoices.length}件</span></CardHeader>
+            <Table
+              cols={[{key:'id',label:'請求ID'},{key:'tenant',label:'テナント'},{key:'total',label:'合計',render:v=>fmtY(v)},{key:'dueDate',label:'期日'},{key:'status',label:'状態',render:v=>statusBadge(v)}]}
+              rows={data.invoices.slice(0,5)}
+            />
+          </Card>
+        </div>
+      </DashSection>
     </div>
   );
 };
 
 // ==================== Sales ====================
-const salesBarData = [
-  {month:'10月',月額:38,従量:3,トークン:1},{month:'11月',月額:41,従量:4,トークン:1},{month:'12月',月額:44,従量:5,トークン:1},
-  {month:'1月',月額:48,従量:6,トークン:1},{month:'2月',月額:51,従量:6,トークン:2},{month:'3月',月額:49,従量:10,トークン:3.5},
-];
-const agencyRanking = [
-  {name:'㈱スマートビジネス',mrr:2100000,rate:'+8%'},{name:'㈱テクノソリューション',mrr:1850000,rate:'+3%'},
-  {name:'デジタルパートナーズ㈱',mrr:1240000,rate:'+12%'},{name:'㈱ウェーブソリューション',mrr:980000,rate:'+5%'},
-];
-
 const SalesPage = ({ data, showToast }) => {
   const [search, setSearch] = React.useState('');
-  const detail = data.contracts.filter(c=>c.tenant.includes(search)||c.product.includes(search)||c.agency.includes(search));
+
+  const currentMonth = new Date().toISOString().slice(0,7);
+  const thisMonthInvoices = data.invoices.filter(i=>i.month===currentMonth);
+  const totalSales = thisMonthInvoices.reduce((s,i)=>s+(i.total||0),0);
+  const basicFeeTotal = thisMonthInvoices.reduce((s,i)=>s+(i.basicFee||0),0);
+  const usageFeeTotal = thisMonthInvoices.reduce((s,i)=>s+(i.usageFee||0),0);
+  const allBasicFee = data.invoices.reduce((s,i)=>s+(i.basicFee||0),0);
+  const allUsageFee = data.invoices.reduce((s,i)=>s+(i.usageFee||0),0);
+
+  const monthlyMap = {};
+  data.invoices.forEach(inv=>{
+    const m = inv.month || (inv.issueDate||'').slice(0,7);
+    if(!m) return;
+    if(!monthlyMap[m]) monthlyMap[m]={month:m.slice(5)+'月', 月額:0, 従量:0};
+    monthlyMap[m].月額 += inv.basicFee||0;
+    monthlyMap[m].従量 += inv.usageFee||0;
+  });
+  const barData = Object.values(monthlyMap).sort((a,b)=>a.month.localeCompare(b.month)).slice(-6);
+
+  const agencyRankingReal = data.agencies.filter(a=>a.status==='有効').sort((a,b)=>(b.mrr||0)-(a.mrr||0)).slice(0,5);
+  const totalMRR = agencyRankingReal.reduce((s,a)=>s+(a.mrr||0),0)||1;
+
+  const detail = data.contracts.filter(c=>{
+    const q = search.toLowerCase();
+    return !search || (c.tenant||'').toLowerCase().includes(q)||(c.product||'').toLowerCase().includes(q)||(c.agency||'').toLowerCase().includes(q);
+  });
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div/>
-        <div className="flex gap-3">
-          <BtnSecondary onClick={()=>showToast('期間変更機能は準備中です','info')}>期間変更</BtnSecondary>
-          <BtnPrimary onClick={()=>{downloadCSV(data.contracts,'sales.csv');showToast('CSV出力しました');}}>CSV出力</BtnPrimary>
-        </div>
+      <div className="flex justify-end gap-3">
+        <BtnPrimary onClick={()=>{downloadCSV(data.contracts,'sales.csv');showToast('CSV出力しました');}}>CSV出力</BtnPrimary>
       </div>
       <div className="grid grid-cols-4 gap-4">
-        <KPICard title="当月売上合計" value="¥6,250万" color="blue" icon="¥"/>
-        <KPICard title="月額売上" value="¥4,900万" color="green" icon="◻"/>
-        <KPICard title="従量売上" value="¥1,000万" color="orange" icon="↑"/>
-        <KPICard title="トークン売上" value="¥350万" color="purple" icon="◆"/>
+        <KPICard title="当月売上合計" value={fmtY(totalSales)} sub={currentMonth} color="blue" icon="¥"/>
+        <KPICard title="当月月額売上" value={fmtY(basicFeeTotal)} color="green" icon="◻"/>
+        <KPICard title="当月従量売上" value={fmtY(usageFeeTotal)} color="orange" icon="↑"/>
+        <KPICard title="累計MRR" value={fmtY(data.tenants.filter(t=>t.status==='契約中').reduce((s,t)=>s+(t.mrr||0),0))} sub="契約中テナント合計" color="purple" icon="◆"/>
       </div>
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-2">
           <Card>
-            <CardHeader title="売上内訳推移（百万円）"/>
+            <CardHeader title="月別売上推移（円）"/>
             <div className="p-4">
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={salesBarData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9"/>
-                  <XAxis dataKey="month" tick={{fontSize:12}}/>
-                  <YAxis tick={{fontSize:12}}/>
-                  <Tooltip/>
-                  <Legend/>
-                  <Bar dataKey="月額" stackId="a" fill="#3b82f6"/>
-                  <Bar dataKey="従量" stackId="a" fill="#10b981"/>
-                  <Bar dataKey="トークン" stackId="a" fill="#f59e0b"/>
-                </BarChart>
-              </ResponsiveContainer>
+              {barData.length>0 ? (
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={barData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9"/>
+                    <XAxis dataKey="month" tick={{fontSize:12}}/>
+                    <YAxis tick={{fontSize:12}} tickFormatter={v=>v>=1000000?Math.round(v/10000)+'万':v>=1000?Math.round(v/1000)+'千':v}/>
+                    <Tooltip formatter={v=>fmtY(v)}/>
+                    <Legend/>
+                    <Bar dataKey="月額" stackId="a" fill="#3b82f6"/>
+                    <Bar dataKey="従量" stackId="a" fill="#10b981"/>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : <p className="text-slate-400 text-center py-16 text-sm">請求データがありません</p>}
             </div>
           </Card>
         </div>
         <Card>
-          <CardHeader title="代理店別売上ランキング"/>
+          <CardHeader title="代理店別MRRランキング"/>
           <div className="p-4 space-y-3">
-            {agencyRanking.map((a,i)=>(
-              <div key={i} className="flex items-center gap-3">
+            {agencyRankingReal.length>0 ? agencyRankingReal.map((a,i)=>(
+              <div key={a.id} className="flex items-center gap-3">
                 <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center">{i+1}</span>
                 <div className="flex-1">
-                  <div className="text-sm font-medium text-slate-700">{a.name}</div>
-                  <div className="text-xs text-slate-500">{fmtY(a.mrr)}</div>
+                  <div className="text-sm font-medium text-slate-700 truncate">{a.name}</div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full"><div className="h-1.5 bg-blue-400 rounded-full" style={{width:`${Math.round((a.mrr||0)/totalMRR*100)}%`}}></div></div>
+                    <span className="text-xs text-slate-500">{fmtY(a.mrr||0)}</span>
+                  </div>
                 </div>
-                <span className="text-xs text-green-600 font-medium">{a.rate}</span>
               </div>
-            ))}
+            )) : <p className="text-slate-400 text-sm text-center py-6">代理店データなし</p>}
           </div>
         </Card>
       </div>
       <Card>
-        <CardHeader title="売上明細">
+        <CardHeader title="売上明細（契約ベース）">
           <SearchBar value={search} onChange={setSearch} placeholder="テナント/製品/代理店"/>
         </CardHeader>
         <Table
@@ -1691,12 +1735,22 @@ const BillingPage = ({ data, setData, setModal, showToast }) => {
         <BtnSecondary onClick={closingProcess}>月次締め処理</BtnSecondary>
         <BtnPrimary onClick={()=>setModal({type:'invoiceNew',data:{}})}>+請求書発行</BtnPrimary>
       </div>
-      <div className="grid grid-cols-4 gap-4">
-        <KPICard title="当月請求総額" value="¥815,000" color="blue" icon="¥"/>
-        <KPICard title="入金済" value="¥85,000" color="green" icon="✓"/>
-        <KPICard title="未入金" value="¥245,000" sub="2件" color="red" icon="!"/>
-        <KPICard title="発行済" value="¥485,000" sub="3件" color="orange" icon="≡"/>
-      </div>
+      {(() => {
+        const totalBilled = data.invoices.reduce((s,i)=>s+(i.total||0),0);
+        const paidAmt = data.invoices.filter(i=>i.status==='入金済').reduce((s,i)=>s+(i.total||0),0);
+        const unpaidAmt = data.invoices.filter(i=>i.status==='未入金').reduce((s,i)=>s+(i.total||0),0);
+        const unpaidCnt = data.invoices.filter(i=>i.status==='未入金').length;
+        const issuedAmt = data.invoices.filter(i=>i.status==='発行済').reduce((s,i)=>s+(i.total||0),0);
+        const issuedCnt = data.invoices.filter(i=>i.status==='発行済').length;
+        return (
+          <div className="grid grid-cols-4 gap-4">
+            <KPICard title="請求総額（全期間）" value={fmtY(totalBilled)} sub={`${data.invoices.length}件`} color="blue" icon="¥"/>
+            <KPICard title="入金済" value={fmtY(paidAmt)} color="green" icon="✓"/>
+            <KPICard title="未入金" value={fmtY(unpaidAmt)} sub={`${unpaidCnt}件`} color={unpaidCnt>0?'red':'green'} icon="!"/>
+            <KPICard title="発行済" value={fmtY(issuedAmt)} sub={`${issuedCnt}件`} color="orange" icon="≡"/>
+          </div>
+        );
+      })()}
       <div className="flex gap-1 border-b border-slate-200">
         {[['list','請求一覧'],['unpaid','未入金管理'],['issue','請求書発行']].map(([id,label])=>(
           <button key={id} onClick={()=>setTab(id)}
@@ -2623,6 +2677,189 @@ const SettingsPage = ({ showToast, loadAllData }) => {
   );
 };
 
+// ==================== CRM ====================
+const CRMPage = ({ data, setData, setModal, showToast, currentUser }) => {
+  const [search, setSearch] = React.useState('');
+  const [filterStatus, setFilterStatus] = React.useState('all');
+  const [selected, setSelected] = React.useState(null);
+  const [tab, setTab] = React.useState('overview');
+  const [notes, setNotes] = React.useState([]);
+  const [noteText, setNoteText] = React.useState('');
+  const [noteType, setNoteType] = React.useState('商談');
+  const [loadingNotes, setLoadingNotes] = React.useState(false);
+  const [addingNote, setAddingNote] = React.useState(false);
+
+  React.useEffect(()=>{
+    if(!selected || tab!=='notes') return;
+    setLoadingNotes(true);
+    const fetch = () => db.collection('contactNotes').where('tenantId','==',selected.id).orderBy('timestamp','desc').get()
+      .then(snap=>{ setNotes(snap.docs.map(d=>({...d.data(),id:d.id}))); setLoadingNotes(false); })
+      .catch(()=> db.collection('contactNotes').where('tenantId','==',selected.id).get()
+        .then(snap=>{ setNotes(snap.docs.map(d=>({...d.data(),id:d.id})).sort((a,b)=>b.timestamp.localeCompare(a.timestamp))); setLoadingNotes(false); }));
+    fetch();
+  },[selected, tab]);
+
+  const addNote = async () => {
+    if(!noteText.trim()||!selected) return;
+    setAddingNote(true);
+    const note = { tenantId:selected.id, tenantName:selected.name, text:noteText.trim(), type:noteType, author:currentUser?.email||'不明', timestamp:new Date().toISOString() };
+    const ref = db.collection('contactNotes').doc('CN'+Date.now());
+    await ref.set(note);
+    setNotes(prev=>[{...note,id:ref.id},...prev]);
+    setNoteText('');
+    setAddingNote(false);
+    showToast('ノートを追加しました');
+  };
+
+  const selectTenant = t => { setSelected(t); setTab('overview'); setNotes([]); };
+
+  const filtered = data.tenants.filter(t=>{
+    const q = search.toLowerCase();
+    const matchS = !search||(t.name||'').toLowerCase().includes(q)||(t.agency||'').toLowerCase().includes(q);
+    const matchF = filterStatus==='all'||t.status===filterStatus;
+    return matchS && matchF;
+  });
+
+  const tc = n => selected ? (data[n]||[]).filter(x=>x.tenant===selected.name) : [];
+  const tContracts=tc('contracts'), tInvoices=tc('invoices'), tQuotes=tc('quotes'), tDeliveries=tc('deliveries'), tTrainings=tc('trainings');
+
+  return (
+    <div style={{display:'flex',gap:'16px',height:'calc(100vh - 160px)'}}>
+      {/* Left list */}
+      <div style={{width: selected?'300px':'100%', flexShrink:0, display:'flex', flexDirection:'column', transition:'width .2s'}}>
+        <div className="flex gap-2 mb-3">
+          <div className="flex-1"><SearchBar value={search} onChange={setSearch} placeholder="会社名・代理店名"/></div>
+          <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="all">全ステータス</option>
+            <option value="契約中">契約中</option>
+            <option value="トライアル">トライアル</option>
+            <option value="停止中">停止中</option>
+          </select>
+        </div>
+        <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+          {filtered.length===0 && <p className="text-slate-400 text-sm text-center py-10">テナントなし</p>}
+          {filtered.map(t=>(
+            <button key={t.id} onClick={()=>selectTenant(t)}
+              className={`w-full text-left p-3 rounded-xl border transition-all ${selected?.id===t.id?'border-blue-400 bg-blue-50 shadow-sm':'border-slate-200 bg-white hover:bg-slate-50'}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-semibold text-slate-800 text-sm truncate">{t.name}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{t.agency||'直販'}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  {statusBadge(t.status)}
+                  {(t.mrr||0)>0 && <span className="text-xs text-blue-600 font-medium">{fmtY(t.mrr)}</span>}
+                </div>
+              </div>
+              {(t.products||[]).length>0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {(t.products||[]).map(p=><span key={p} className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{p}</span>)}
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Right detail */}
+      {selected && (
+        <div className="flex-1 flex flex-col min-w-0 border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-white">
+            <div>
+              <h2 className="font-bold text-slate-800 text-base">{selected.name}</h2>
+              <p className="text-xs text-slate-400 mt-0.5">{selected.agency||'直販'} | 開始: {selected.startDate||'—'} | MRR: {fmtY(selected.mrr||0)}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              {statusBadge(selected.status)}
+              <button onClick={()=>setSelected(null)} className="text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
+            </div>
+          </div>
+          <div className="flex gap-0 border-b border-slate-100 px-5 bg-white">
+            {[['overview','概要'],['docs','書類'],['billing','請求'],['notes','メモ・ノート']].map(([id,lbl])=>(
+              <button key={id} onClick={()=>setTab(id)}
+                className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${tab===id?'border-blue-600 text-blue-600':'border-transparent text-slate-500 hover:text-slate-700'}`}>
+                {lbl}
+                {id==='billing'&&tInvoices.filter(i=>i.status==='未入金').length>0&&<span className="ml-1 bg-red-500 text-white text-xs rounded-full px-1.5">{tInvoices.filter(i=>i.status==='未入金').length}</span>}
+              </button>
+            ))}
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 bg-slate-50 space-y-4">
+            {tab==='overview' && (
+              <>
+                <div className="grid grid-cols-3 gap-3">
+                  <KPICard title="月額MRR" value={fmtY(selected.mrr||0)} color="blue" icon="¥"/>
+                  <KPICard title="有効契約" value={`${tContracts.filter(c=>c.status==='契約中').length}件`} color="green" icon="◉"/>
+                  <KPICard title="未入金" value={`${tInvoices.filter(i=>i.status==='未入金').length}件`} color={tInvoices.filter(i=>i.status==='未入金').length>0?'red':'green'} icon="≡"/>
+                </div>
+                <Card>
+                  <CardHeader title="基本情報"/>
+                  <div className="p-4 space-y-0">
+                    {[['会社名',selected.name],['代理店',selected.agency||'直販'],['開始月',selected.startDate||'—'],['ステータス',selected.status],['導入製品',(selected.products||[]).join(', ')||'—']].map(([k,v])=>(
+                      <div key={k} className="flex text-sm py-2 border-b border-slate-50 last:border-0">
+                        <span className="text-slate-400 w-24 flex-shrink-0">{k}</span>
+                        <span className="text-slate-800 font-medium">{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+                {tContracts.length>0 && (
+                  <Card>
+                    <CardHeader title="契約一覧"/>
+                    <Table cols={[{key:'id',label:'契約ID'},{key:'product',label:'製品'},{key:'startDate',label:'開始'},{key:'endDate',label:'終了'},{key:'monthlyFee',label:'月額',render:v=>fmtY(v)},{key:'status',label:'状態',render:v=>statusBadge(v)}]} rows={tContracts}/>
+                  </Card>
+                )}
+              </>
+            )}
+            {tab==='docs' && (
+              <>
+                {tQuotes.length>0 && <Card><CardHeader title={`見積書 (${tQuotes.length}件)`}/><Table cols={[{key:'id',label:'ID'},{key:'issueDate',label:'発行日'},{key:'total',label:'合計',render:v=>fmtY(v)},{key:'validUntil',label:'有効期限'},{key:'status',label:'状態',render:v=>statusBadge(v)}]} rows={tQuotes}/></Card>}
+                {tDeliveries.length>0 && <Card><CardHeader title={`納品書 (${tDeliveries.length}件)`}/><Table cols={[{key:'id',label:'ID'},{key:'issueDate',label:'発行日'},{key:'deliveryDate',label:'納品日'},{key:'total',label:'合計',render:v=>fmtY(v)},{key:'status',label:'状態',render:v=>statusBadge(v)}]} rows={tDeliveries}/></Card>}
+                {tTrainings.length>0 && <Card><CardHeader title={`研修書 (${tTrainings.length}件)`}/><Table cols={[{key:'id',label:'ID'},{key:'trainingDate',label:'研修日'},{key:'trainer',label:'講師'},{key:'content',label:'内容'},{key:'status',label:'状態',render:v=>statusBadge(v)}]} rows={tTrainings}/></Card>}
+                {tQuotes.length===0&&tDeliveries.length===0&&tTrainings.length===0 && <p className="text-center py-12 text-slate-400 text-sm">書類なし</p>}
+              </>
+            )}
+            {tab==='billing' && (
+              <>
+                <div className="grid grid-cols-3 gap-3">
+                  <KPICard title="請求書" value={`${tInvoices.length}件`} color="blue" icon="≡"/>
+                  <KPICard title="入金済" value={fmtY(tInvoices.filter(i=>i.status==='入金済').reduce((s,i)=>s+(i.total||0),0))} color="green" icon="✓"/>
+                  <KPICard title="未入金" value={fmtY(tInvoices.filter(i=>i.status==='未入金').reduce((s,i)=>s+(i.total||0),0))} color={tInvoices.filter(i=>i.status==='未入金').length>0?'red':'green'} icon="!"/>
+                </div>
+                {tInvoices.length>0 ? <Card><CardHeader title="請求履歴"/><Table cols={[{key:'id',label:'請求ID'},{key:'month',label:'月'},{key:'basicFee',label:'基本料',render:v=>fmtY(v)},{key:'usageFee',label:'従量',render:v=>fmtY(v)},{key:'total',label:'合計',render:v=>fmtY(v)},{key:'dueDate',label:'期日'},{key:'status',label:'状態',render:v=>statusBadge(v)}]} rows={tInvoices}/></Card> : <p className="text-center py-12 text-slate-400 text-sm">請求書なし</p>}
+              </>
+            )}
+            {tab==='notes' && (
+              <>
+                <Card>
+                  <CardHeader title="コンタクトノートを追加"/>
+                  <div className="p-4 space-y-3">
+                    <select value={noteType} onChange={e=>setNoteType(e.target.value)} className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      {['商談','電話','訪問','メール','その他'].map(t=><option key={t}>{t}</option>)}
+                    </select>
+                    <textarea value={noteText} onChange={e=>setNoteText(e.target.value)} placeholder="内容を入力..." rows={3} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"/>
+                    <BtnPrimary onClick={addNote} disabled={!noteText.trim()||addingNote}>{addingNote?'追加中...':'ノートを追加'}</BtnPrimary>
+                  </div>
+                </Card>
+                {loadingNotes ? <p className="text-center text-slate-400 py-4 text-sm">読み込み中...</p>
+                  : notes.length===0 ? <p className="text-center text-slate-400 py-4 text-sm">ノートなし</p>
+                  : <div className="space-y-3">{notes.map(n=>(
+                    <div key={n.id} className="bg-white border border-slate-200 rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{n.type}</span>
+                        <span className="text-xs text-slate-400">{n.author} | {(n.timestamp||'').slice(0,16).replace('T',' ')}</span>
+                      </div>
+                      <p className="text-sm text-slate-700 whitespace-pre-wrap">{n.text}</p>
+                    </div>
+                  ))}</div>}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ==================== UsersPage ====================
 const UsersPage = ({ data, setData, showToast, currentUser, loadAllData }) => {
   const [showAdd, setShowAdd] = React.useState(false);
@@ -2877,6 +3114,7 @@ const App = () => {
       case 'notice': return <NoticePage {...pageProps}/>;
       case 'permission': return <PermissionPage {...pageProps}/>;
       case 'settings': return <SettingsPage {...pageProps} loadAllData={loadAllData}/>;
+      case 'crm': return <CRMPage {...pageProps} currentUser={currentUser}/>;
       case 'users': return <UsersPage {...pageProps} currentUser={currentUser} loadAllData={loadAllData}/>;
       case 'auditlog': return <AuditLogPage showToast={showToast}/>;
       default: return <DashboardPage {...pageProps}/>;
