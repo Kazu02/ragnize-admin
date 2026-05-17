@@ -67,99 +67,19 @@ const MENU_ITEMS = [
 ];
 
 const INITIAL_DATA = {
-  agencies: [
-    { id:'AG001', name:'㈱テクノソリューション', code:'TS-001', subCount:3, tenantCount:12, mrr:1850000, commission:370000, status:'有効', startDate:'2024-04-01' },
-    { id:'AG002', name:'デジタルパートナーズ㈱', code:'DP-002', subCount:2, tenantCount:8, mrr:1240000, commission:240000, status:'有効', startDate:'2024-06-01' },
-    { id:'AG003', name:'㈱スマートビジネス', code:'SB-003', subCount:5, tenantCount:15, mrr:2100000, commission:420000, status:'有効', startDate:'2024-03-01' },
-    { id:'AG004', name:'イノベーション合同会社', code:'IN-004', subCount:1, tenantCount:5, mrr:780000, commission:150000, status:'審査中', startDate:'2025-02-01' },
-    { id:'AG005', name:'㈱フューチャーリンク', code:'FL-005', subCount:0, tenantCount:0, mrr:0, commission:0, status:'停止', startDate:'2024-08-01' },
-    { id:'AG006', name:'㈱ウェーブソリューション', code:'WS-006', subCount:2, tenantCount:7, mrr:980000, commission:190000, status:'有効', startDate:'2024-09-01' },
-  ],
-  subagencies: [
-    { id:'SA001', name:'㈱ネクストステージ', code:'NS-001', parentAgency:'テクノソリューション', tenantCount:4, mrr:620000, commission:120000, status:'有効' },
-    { id:'SA002', name:'東海ビジネス㈱', code:'TB-002', parentAgency:'スマートビジネス', tenantCount:3, mrr:450000, commission:90000, status:'有効' },
-    { id:'SA003', name:'㈱ノーススター', code:'NS-003', parentAgency:'デジタルパートナーズ', tenantCount:2, mrr:280000, commission:50000, status:'審査中' },
-    { id:'SA004', name:'九州DX推進㈱', code:'KD-004', parentAgency:'スマートビジネス', tenantCount:5, mrr:710000, commission:140000, status:'有効' },
-    { id:'SA005', name:'㈱関東テック', code:'KT-005', parentAgency:'テクノソリューション', tenantCount:1, mrr:150000, commission:30000, status:'停止' },
-  ],
-  tenants: [
-    { id:'TN001', name:'㈱山田製作所', agency:'テクノソリューション', products:['ナツメAI','架電AI'], mrr:320000, startDate:'2024-05', status:'契約中' },
-    { id:'TN002', name:'大阪商事㈱', agency:'スマートビジネス', products:['受電AI'], mrr:85000, startDate:'2024-08', status:'契約中' },
-    { id:'TN003', name:'東京技研㈱', agency:'直販', products:['RAGNIZE面接'], mrr:45000, startDate:'2025-01', status:'契約中' },
-    { id:'TN004', name:'㈱北海道フーズ', agency:'デジタルパートナーズ', products:['マドモアゼルAI'], mrr:28000, startDate:'2025-03', status:'トライアル' },
-    { id:'TN005', name:'九州エネルギー㈱', agency:'テクノソリューション', products:['架電AI','受電AI'], mrr:180000, startDate:'2024-11', status:'契約中' },
-    { id:'TN006', name:'関西メディア㈱', agency:'スマートビジネス', products:['ナツメAI'], mrr:120000, startDate:'2024-09', status:'契約中' },
-    { id:'TN007', name:'中部システム㈱', agency:'テクノソリューション', products:['架電AI'], mrr:65000, startDate:'2024-06', status:'停止中' },
-  ],
-  contracts: [
-    { id:'CT-2503-001', tenant:'㈱山田製作所', agency:'テクノソリューション', product:'ナツメAI', startDate:'2024-05-01', endDate:'2025-04-30', monthlyFee:250000, status:'契約中', econtract:'締結済' },
-    { id:'CT-2503-002', tenant:'大阪商事㈱', agency:'スマートビジネス', product:'受電AI', startDate:'2024-08-15', endDate:'2025-08-14', monthlyFee:85000, status:'契約中', econtract:'締結済' },
-    { id:'CT-2503-003', tenant:'東京技研㈱', agency:'直販', product:'RAGNIZE面接', startDate:'2025-01-01', endDate:'2025-12-31', monthlyFee:45000, status:'契約中', econtract:'署名中' },
-    { id:'CT-2503-004', tenant:'㈱北海道フーズ', agency:'デジタルパートナーズ', product:'マドモアゼルAI', startDate:'2025-03-01', endDate:'2025-05-31', monthlyFee:28000, status:'トライアル', econtract:'送信済' },
-    { id:'CT-2503-005', tenant:'九州エネルギー㈱', agency:'テクノソリューション', product:'架電AI', startDate:'2024-11-01', endDate:'2025-10-31', monthlyFee:120000, status:'契約中', econtract:'締結済' },
-    { id:'CT-2503-006', tenant:'関西メディア㈱', agency:'スマートビジネス', product:'ナツメAI', startDate:'2024-09-01', endDate:'2025-08-31', monthlyFee:120000, status:'契約中', econtract:'締結済' },
-    { id:'CT-2503-007', tenant:'中部システム㈱', agency:'テクノソリューション', product:'架電AI', startDate:'2024-06-01', endDate:'2025-05-31', monthlyFee:65000, status:'停止中', econtract:'締結済' },
-  ],
-  invoices: [
-    { id:'INV-202503-001', tenant:'㈱山田製作所', month:'2025-03', basicFee:250000, usageFee:70000, total:320000, dueDate:'2025-04-30', status:'発行済' },
-    { id:'INV-202503-002', tenant:'大阪商事㈱', month:'2025-03', basicFee:85000, usageFee:0, total:85000, dueDate:'2025-04-30', status:'入金済' },
-    { id:'INV-202503-003', tenant:'東京技研㈱', month:'2025-03', basicFee:45000, usageFee:0, total:45000, dueDate:'2025-04-30', status:'発行済' },
-    { id:'INV-202503-004', tenant:'九州エネルギー㈱', month:'2025-03', basicFee:120000, usageFee:60000, total:180000, dueDate:'2025-03-31', status:'未入金' },
-    { id:'INV-202503-005', tenant:'関西メディア㈱', month:'2025-03', basicFee:120000, usageFee:0, total:120000, dueDate:'2025-04-30', status:'発行済' },
-    { id:'INV-202503-006', tenant:'中部システム㈱', month:'2025-03', basicFee:65000, usageFee:0, total:65000, dueDate:'2025-03-31', status:'未入金' },
-  ],
-  products: [
-    { id:'P001', name:'ナツメAI', category:'音声AI', billingType:'月額+従量', basicFee:50000, initialFee:100000, agencyRate:20, subagencyRate:10, usage:18, status:'有効' },
-    { id:'P002', name:'架電AI', category:'音声AI', billingType:'月額+従量', basicFee:40000, initialFee:80000, agencyRate:20, subagencyRate:10, usage:14, status:'有効' },
-    { id:'P003', name:'受電AI', category:'音声AI', billingType:'月額+従量', basicFee:35000, initialFee:70000, agencyRate:15, subagencyRate:8, usage:9, status:'有効' },
-    { id:'P004', name:'RAGNIZE for 面接', category:'SaaS', billingType:'月額固定', basicFee:45000, initialFee:50000, agencyRate:15, subagencyRate:8, usage:6, status:'有効' },
-    { id:'P005', name:'マドモアゼルAI', category:'トークン型', billingType:'月額+トークン', basicFee:0, initialFee:0, agencyRate:10, subagencyRate:5, usage:5, status:'有効' },
-    { id:'P006', name:'jobゲート', category:'SaaS', billingType:'月額固定', basicFee:30000, initialFee:30000, agencyRate:15, subagencyRate:8, usage:0, status:'準備中' },
-    { id:'P007', name:'恋テレ', category:'トークン型', billingType:'月額+トークン', basicFee:0, initialFee:0, agencyRate:10, subagencyRate:5, usage:0, status:'準備中' },
-  ],
-  callLogs: [
-    { id:'CL001', tenant:'㈱山田製作所', type:'架電', date:'2025-03-15', duration:'5分20秒', seconds:320, unitPrice:2, amount:640, status:'完了' },
-    { id:'CL002', tenant:'九州エネルギー㈱', type:'受電', date:'2025-03-15', duration:'3分10秒', seconds:190, unitPrice:2, amount:380, status:'完了' },
-    { id:'CL003', tenant:'㈱山田製作所', type:'架電', date:'2025-03-14', duration:'8分45秒', seconds:525, unitPrice:2, amount:1050, status:'完了' },
-    { id:'CL004', tenant:'中部システム㈱', type:'架電', date:'2025-03-14', duration:'1分30秒', seconds:90, unitPrice:2, amount:180, status:'失敗' },
-    { id:'CL005', tenant:'大阪商事㈱', type:'受電', date:'2025-03-13', duration:'12分00秒', seconds:720, unitPrice:2, amount:1440, status:'完了' },
-  ],
-  tokenLogs: [
-    { id:'TK001', tenant:'マドモアゼルAI/北海道フーズ', event:'付与', tokens:100000, unitPrice:0.01, amount:1000, balance:98450, date:'2025-03-01' },
-    { id:'TK002', tenant:'マドモアゼルAI/北海道フーズ', event:'消費', tokens:-1200, unitPrice:0.01, amount:12, balance:97250, date:'2025-03-05' },
-    { id:'TK003', tenant:'恋テレ/㈱サンプル', event:'追加購入', tokens:50000, unitPrice:0.01, amount:500, balance:50000, date:'2025-03-10' },
-    { id:'TK004', tenant:'マドモアゼルAI/北海道フーズ', event:'消費', tokens:-550, unitPrice:0.01, amount:5.5, balance:96700, date:'2025-03-12' },
-  ],
-  econtracts: [
-    { id:'ES-001', contractId:'CT-2503-001', tenant:'㈱山田製作所', type:'新規契約', sentDate:'2024-04-20', signedDate:'2024-04-25', status:'締結済' },
-    { id:'ES-002', contractId:'CT-2503-002', tenant:'大阪商事㈱', type:'新規契約', sentDate:'2024-08-01', signedDate:'2024-08-10', status:'締結済' },
-    { id:'ES-003', contractId:'CT-2503-003', tenant:'東京技研㈱', type:'新規契約', sentDate:'2025-03-10', signedDate:'-', status:'署名中' },
-    { id:'ES-004', contractId:'CT-2503-004', tenant:'㈱北海道フーズ', type:'トライアル', sentDate:'2025-03-14', signedDate:'-', status:'送信済' },
-    { id:'ES-005', contractId:'CT-2503-005', tenant:'九州エネルギー㈱', type:'新規契約', sentDate:'2024-10-20', signedDate:'2024-10-28', status:'締結済' },
-    { id:'ES-006', contractId:'-', tenant:'㈱山田製作所', type:'更新契約', sentDate:'-', signedDate:'-', status:'下書き' },
-  ],
-  notices: [
-    { id:'NT001', title:'2025年4月 請求書発行スケジュールのお知らせ', target:'全ユーザー', publishDate:'2025-03-20', endDate:'2025-04-30', status:'予約済', body:'' },
-    { id:'NT002', title:'システムメンテナンスのご案内（3/30 2:00〜4:00）', target:'全ユーザー', publishDate:'2025-03-18', endDate:'2025-03-30', status:'公開中', body:'' },
-    { id:'NT003', title:'新機能リリース：電子契約リマインド機能の追加', target:'代理店以上', publishDate:'2025-03-15', endDate:'2025-04-15', status:'公開中', body:'' },
-    { id:'NT004', title:'架電AI 価格改定のご案内（2025年5月〜）', target:'全ユーザー', publishDate:'2025-04-01', endDate:'2025-05-31', status:'下書き', body:'' },
-    { id:'NT005', title:'代理店向け Q1 実績レポート配信', target:'代理店のみ', publishDate:'2025-03-10', endDate:'2025-04-10', status:'公開中', body:'' },
-  ],
-  quotes: [
-    { id:'QT-202503-001', issueDate:'2025-03-10', validUntil:'2025-04-10', tenant:'㈱山田製作所', agency:'テクノソリューション', items:[{name:'ナツメAI 月額基本料金',qty:1,unitPrice:50000,amount:50000},{name:'初期設定費用',qty:1,unitPrice:100000,amount:100000}], subtotal:150000, tax:15000, total:165000, status:'承認済', notes:'' },
-    { id:'QT-202503-002', issueDate:'2025-03-14', validUntil:'2025-04-14', tenant:'大阪商事㈱', agency:'スマートビジネス', items:[{name:'受電AI 月額基本料金',qty:1,unitPrice:35000,amount:35000},{name:'初期設定費用',qty:1,unitPrice:70000,amount:70000}], subtotal:105000, tax:10500, total:115500, status:'送付済', notes:'' },
-    { id:'QT-202503-003', issueDate:'2025-03-18', validUntil:'2025-04-18', tenant:'東京技研㈱', agency:'直販', items:[{name:'RAGNIZE for 面接 月額料金',qty:1,unitPrice:45000,amount:45000}], subtotal:45000, tax:4500, total:49500, status:'下書き', notes:'トライアル終了後の本契約見積' },
-  ],
-  deliveries: [
-    { id:'DN-202503-001', issueDate:'2025-03-15', deliveryDate:'2025-03-15', tenant:'㈱山田製作所', agency:'テクノソリューション', contractId:'CT-2503-001', items:[{name:'ナツメAI 初期設定・導入支援',qty:1,unitPrice:100000,amount:100000},{name:'ナツメAI ライセンス（1ヶ月分）',qty:1,unitPrice:50000,amount:50000}], subtotal:150000, tax:15000, total:165000, status:'納品済', notes:'' },
-    { id:'DN-202503-002', issueDate:'2025-03-20', deliveryDate:'2025-03-20', tenant:'大阪商事㈱', agency:'スマートビジネス', contractId:'CT-2503-002', items:[{name:'受電AI 環境構築・初期設定',qty:1,unitPrice:70000,amount:70000}], subtotal:70000, tax:7000, total:77000, status:'納品済', notes:'' },
-    { id:'DN-202503-003', issueDate:'2025-03-25', deliveryDate:'', tenant:'東京技研㈱', agency:'直販', contractId:'CT-2503-003', items:[{name:'RAGNIZE for 面接 初期設定',qty:1,unitPrice:50000,amount:50000}], subtotal:50000, tax:5000, total:55000, status:'下書き', notes:'' },
-  ],
-  trainings: [
-    { id:'TR-202503-001', issueDate:'2025-03-16', trainingDate:'2025-03-16', tenant:'㈱山田製作所', agency:'テクノソリューション', contractId:'CT-2503-001', location:'オンライン（Zoom）', duration:'3時間', trainer:'田中 太郎', trainees:'山田 一郎、鈴木 花子、佐藤 次郎', content:'ナツメAI 管理者向け基本操作研修', products:['ナツメAI'], status:'実施済', notes:'' },
-    { id:'TR-202503-002', issueDate:'2025-03-22', trainingDate:'2025-03-22', tenant:'大阪商事㈱', agency:'スマートビジネス', contractId:'CT-2503-002', location:'現地（大阪商事㈱ 会議室）', duration:'2時間', trainer:'田中 太郎', trainees:'大阪 三郎、関西 春子', content:'受電AI オペレーター向け研修', products:['受電AI'], status:'実施済', notes:'' },
-    { id:'TR-202503-003', issueDate:'2025-04-05', trainingDate:'2025-04-05', tenant:'東京技研㈱', agency:'直販', contractId:'CT-2503-003', location:'オンライン（Teams）', duration:'2時間', trainer:'', trainees:'', content:'RAGNIZE for 面接 導入研修', products:['RAGNIZE面接'], status:'予定', notes:'日程調整中' },
-  ],
+  agencies: [],
+  subagencies: [],
+  tenants: [],
+  contracts: [],
+  invoices: [],
+  products: [],
+  callLogs: [],
+  tokenLogs: [],
+  econtracts: [],
+  notices: [],
+  quotes: [],
+  deliveries: [],
+  trainings: [],
 };
 
 // ==================== Utility ====================
@@ -2576,18 +2496,35 @@ const PermissionPage = ({ setModal, showToast }) => {
 };
 
 // ==================== Settings ====================
-const SettingsPage = ({ showToast }) => {
+const SettingsPage = ({ showToast, loadAllData }) => {
   const [tab, setTab] = React.useState('basic');
   const [basic, setBasic] = React.useState({ companyName:'CLASSIX株式会社', email:'admin@classix.co.jp', phone:'03-1234-5678', address:'東京都渋谷区...' });
   const [apiKeys, setApiKeys] = React.useState({ docusign:'sk-doc-****-****-1234', stripe:'sk_live_****1234', sendgrid:'SG.****1234' });
   const [notifs, setNotifs] = React.useState({ unpaidAlert:true, contractExpiry:true, newTenant:true, systemError:true, weeklyReport:false });
-  const auditLogs = [
-    { date:'2025-03-15 14:32','ユーザー':'admin@classix.co.jp', 操作:'代理店情報更新', 対象:'AG003', IP:'192.168.1.1' },
-    { date:'2025-03-15 10:15','ユーザー':'agency@techno.co.jp', 操作:'テナント追加', 対象:'TN007', IP:'203.0.113.5' },
-    { date:'2025-03-14 16:40','ユーザー':'admin@classix.co.jp', 操作:'製品価格変更', 対象:'P001', IP:'192.168.1.1' },
-    { date:'2025-03-14 09:20','ユーザー':'admin@classix.co.jp', 操作:'請求書発行', 対象:'INV-202503-001', IP:'192.168.1.1' },
-    { date:'2025-03-13 17:00','ユーザー':'subag@nextstage.co.jp', 操作:'ログイン', 対象:'-', IP:'198.51.100.2' },
-  ];
+  const [clearing, setClearing] = React.useState(false);
+  const auditLogs = [];
+
+  const clearAllData = async () => {
+    if (!window.confirm('全データを削除しますか？\n代理店・テナント・契約・請求書・見積書・納品書・研修書などが全て削除されます。\n\nこの操作は取り消せません。')) return;
+    setClearing(true);
+    const cols = ['agencies','subagencies','tenants','contracts','invoices','quotes','deliveries','trainings','products','callLogs','tokenLogs','econtracts','notices'];
+    try {
+      for (const col of cols) {
+        const snap = await db.collection(col).get();
+        if (snap.docs.length === 0) continue;
+        const batch = db.batch();
+        snap.docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+      }
+      if (loadAllData) await loadAllData();
+      showToast('全データを削除しました');
+    } catch(e) {
+      showToast('削除に失敗しました: ' + e.message, 'error');
+    } finally {
+      setClearing(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex gap-1 border-b border-slate-200">
@@ -2621,6 +2558,20 @@ const SettingsPage = ({ showToast }) => {
             </div>
           </Card>
           <BtnPrimary onClick={()=>showToast('基本設定を保存しました')}>設定を保存</BtnPrimary>
+          <Card>
+            <CardHeader title="データ管理"/>
+            <div className="p-6">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm font-semibold text-red-800 mb-1">全データを一括削除</p>
+                <p className="text-xs text-red-600 mb-3">Firestore上の全データ（代理店・テナント・契約・請求書・見積書・納品書・研修書等）を削除します。ユーザーアカウントは削除されません。この操作は取り消せません。</p>
+                <button
+                  onClick={clearAllData}
+                  disabled={clearing}
+                  className="bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white text-sm px-4 py-2 rounded-lg font-medium transition-colors"
+                >{clearing ? '削除中...' : '全データを削除する'}</button>
+              </div>
+            </div>
+          </Card>
         </div>
       )}
       {tab==='api' && (
@@ -2925,7 +2876,7 @@ const App = () => {
       case 'econtract': return <EContractPage {...pageProps}/>;
       case 'notice': return <NoticePage {...pageProps}/>;
       case 'permission': return <PermissionPage {...pageProps}/>;
-      case 'settings': return <SettingsPage {...pageProps}/>;
+      case 'settings': return <SettingsPage {...pageProps} loadAllData={loadAllData}/>;
       case 'users': return <UsersPage {...pageProps} currentUser={currentUser} loadAllData={loadAllData}/>;
       case 'auditlog': return <AuditLogPage showToast={showToast}/>;
       default: return <DashboardPage {...pageProps}/>;
